@@ -607,7 +607,8 @@
     },
     chrome: {
       label: 'Chrome',
-      html: '<p>WebGPU may be disabled. Enable it at <code style="color:var(--accent)">chrome://flags/#enable-unsafe-webgpu</code>, then relaunch.</p>',
+      html: '<p>WebGPU requires hardware acceleration. Go to <code style="color:var(--accent)">chrome://settings/system</code>, turn on <em>Use hardware acceleration when available</em>, then relaunch Chrome.</p>'
+        + '<p style="font-size:12px;margin-top:8px">If hardware acceleration is already on, your GPU or driver may not support WebGPU — try updating your GPU drivers.</p>',
     },
     unknown: {
       label: 'your browser',
@@ -730,8 +731,6 @@ let latestCode = "";
   const isBrave = navigator.brave && await navigator.brave.isBrave().catch(() => false);
   const adviceEl = document.getElementById("compat-advice");
   if (adviceEl && !adviceEl.innerHTML) {
-    const key = isBrave ? "brave" : (document.documentElement.dataset.browser || "chrome");
-    // Reuse the IIFE-rendered advice if already set, otherwise inject for Brave
     if (isBrave) {
       adviceEl.innerHTML =
         '<p style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Detected browser: <strong style="color:var(--text)">Brave</strong></p>'
@@ -739,6 +738,15 @@ let latestCode = "";
         + '<p style="font-size:12px;margin-top:4px">'
         + '<strong style="color:var(--text)">Option 1 — Flags (permanent):</strong> go to <code style="color:var(--accent)">brave://flags/#enable-unsafe-webgpu</code>, set it to <em>Enabled</em>, then relaunch.<br><br>'
         + '<strong style="color:var(--text)">Option 2 — Shields (this site only):</strong> click the Brave lion icon → set <em>Fingerprinting blocking</em> to <em>Allow all fingerprinting</em>.'
+        + '</p>';
+    } else {
+      adviceEl.innerHTML =
+        '<p style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Detected browser: <strong style="color:var(--text)">Chrome</strong></p>'
+        + '<p>Chrome found the WebGPU API but could not access a compatible GPU adapter.</p>'
+        + '<p style="font-size:12px;margin-top:8px">'
+        + '<strong style="color:var(--text)">Option 1 — Enable hardware acceleration:</strong> go to <code style="color:var(--accent)">chrome://settings/system</code>, turn on <em>Use hardware acceleration when available</em>, then relaunch.<br><br>'
+        + '<strong style="color:var(--text)">Option 2 — Allow software fallback:</strong> go to <code style="color:var(--accent)">chrome://flags/#ignore-gpu-blocklist</code>, set it to <em>Enabled</em>, then relaunch.<br><br>'
+        + '<strong style="color:var(--text)">Option 3 — Update GPU drivers</strong> to the latest version for your graphics card.'
         + '</p>';
     }
   }
