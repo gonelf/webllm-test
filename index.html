@@ -391,7 +391,7 @@
 
   <div id="model-status">
     <div id="status-dot"></div>
-    <span id="status-text">Initializing…</span>
+    <span id="status-text">Not loaded</span>
   </div>
 </header>
 
@@ -419,9 +419,9 @@
       <div id="progress-label">Loading model…</div>
     </div>
 
-    <button class="btn-generate" id="btn-generate" disabled>
+    <button class="btn-generate" id="btn-generate" type="button">
       <div class="spinner" id="gen-spinner"></div>
-      <span id="btn-label">Loading model…</span>
+      <span id="btn-label">Load model</span>
     </button>
   </div>
 
@@ -487,6 +487,7 @@ const webgpuWarn   = document.getElementById("webgpu-warning");
 // ── State ─────────────────────────────────────────────────────────────────────
 let engine = null;
 let isGenerating = false;
+let isLoading = false;
 let latestCode = "";
 
 // ── WebGPU check ──────────────────────────────────────────────────────────────
@@ -511,6 +512,9 @@ function setStatus(state, text) {
 const MODEL_ID = "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC";
 
 async function initEngine() {
+  if (isLoading) return;
+  isLoading = true;
+  btnGenerate.disabled = true;
   setStatus("loading", "Loading model…");
   progressWrap.classList.add("visible");
   btnLabel.textContent = "Loading model…";
@@ -518,7 +522,7 @@ async function initEngine() {
   try {
     engine = await webllm.CreateMLCEngine(MODEL_ID, {
       initProgressCallback: (report) => {
-        const pct = Math.round(report.progress * 100);
+        const pct = Math.round((report.progress ?? 0) * 100);
         progressBar.style.width = pct + "%";
         progressLabel.textContent = report.text || `Loading… ${pct}%`;
       },
@@ -531,11 +535,12 @@ async function initEngine() {
   } catch (err) {
     progressWrap.classList.remove("visible");
     setStatus("error", "Failed to load model");
-    btnLabel.textContent = "Model failed — retry?";
+    btnLabel.textContent = "Retry loading model";
     btnGenerate.disabled = false;
-    btnGenerate.onclick = initEngine;
     showToast("Error loading model: " + err.message, 8000);
     console.error(err);
+  } finally {
+    isLoading = false;
   }
 }
 
@@ -665,7 +670,14 @@ document.querySelectorAll(".example-btn").forEach(btn => {
 });
 
 // ── Generate button ───────────────────────────────────────────────────────────
-btnGenerate.addEventListener("click", generate);
+btnGenerate.addEventListener("click", async () => {
+  if (isLoading) return;
+  if (!engine) {
+    await initEngine();
+  } else {
+    generate();
+  }
+});
 
 // Ctrl+Enter shortcut
 promptArea.addEventListener("keydown", e => {
@@ -673,7 +685,8 @@ promptArea.addEventListener("keydown", e => {
 });
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
-initEngine();
+// Model loading is user-triggered to avoid reload loops caused by the browser
+// crashing the tab under GPU/memory pressure during heavy model initialization.
 </script>
 </body>
 </html>
