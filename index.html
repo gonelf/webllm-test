@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebLLM Page Creator — Qwen2.5-Coder</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22253a;
+      --border: #2e3148;
+      --accent: #6c63ff;
+      --accent-hover: #8a83ff;
+      --text: #e2e4f0;
+      --text-muted: #7b80a0;
+      --green: #4ade80;
+      --red: #f87171;
+      --yellow: #fbbf24;
+      --radius: 8px;
+      --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    header .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -0.2px;
+    }
+
+    header .logo svg { width: 24px; height: 24px; }
+
+    header .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: rgba(108, 99, 255, 0.18);
+      color: var(--accent);
+      border: 1px solid rgba(108, 99, 255, 0.3);
+      font-weight: 600;
+    }
+
+    #model-status {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    #status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    #status-dot.ready   { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    #status-dot.loading { background: var(--yellow); animation: pulse 1s infinite; }
+    #status-dot.error   { background: var(--red); }
+
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    /* ── Main layout ── */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 340px 1fr 1fr;
+      overflow: hidden;
+    }
+
+    /* ── Left panel: prompt ── */
+    .panel-left {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .panel-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #prompt-area {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      resize: none;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text);
+      padding: 16px;
+      font-family: inherit;
+    }
+
+    #prompt-area::placeholder { color: var(--text-muted); }
+
+    .examples {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .examples p {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .example-btn {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 12px;
+      padding: 7px 10px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .example-btn:hover {
+      border-color: var(--accent);
+      background: rgba(108, 99, 255, 0.08);
+    }
+
+    .btn-generate {
+      margin: 12px 16px 16px;
+      padding: 12px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-generate:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-generate:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* ── Progress bar ── */
+    #progress-wrap {
+      padding: 0 16px 12px;
+      display: none;
+    }
+
+    #progress-wrap.visible { display: block; }
+
+    #progress-bar-bg {
+      height: 4px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    #progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    #progress-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 5px;
+      text-align: center;
+    }
+
+    /* ── Center: code ── */
+    .panel-code {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      min-width: 0;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .code-header .panel-title { padding: 0; border: none; }
+
+    .btn-copy, .btn-download {
+      margin-left: auto;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--radius);
+      font-size: 12px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    .btn-copy { margin-left: auto; }
+    .btn-download { margin-left: 6px; }
+
+    .btn-copy:hover, .btn-download:hover { border-color: var(--accent); }
+
+    #code-output {
+      flex: 1;
+      overflow: auto;
+      margin: 0;
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.7;
+      color: #a9b1d6;
+      white-space: pre;
+      background: var(--bg);
+    }
+
+    #code-output.streaming { color: var(--text); }
+
+    /* simple syntax colours for generated HTML */
+    .tok-tag   { color: #7aa2f7; }
+    .tok-attr  { color: #e0af68; }
+    .tok-str   { color: #9ece6a; }
+    .tok-cmt   { color: #565f89; font-style: italic; }
+
+    /* ── Right: preview ── */
+    .panel-preview {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .preview-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .preview-header .panel-title { padding: 0; border: none; }
+
+    .btn-refresh {
+      margin-left: auto;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--radius);
+      font-size: 12px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    .btn-refresh:hover { border-color: var(--accent); }
+
+    #preview-frame {
+      flex: 1;
+      border: none;
+      background: #fff;
+    }
+
+    /* ── Empty states ── */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--text-muted);
+      font-size: 14px;
+      padding: 32px;
+      text-align: center;
+    }
+
+    .empty-state svg { opacity: 0.3; }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    .spinner.active { display: block; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error toast ── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #2d1a1a;
+      border: 1px solid var(--red);
+      color: var(--red);
+      padding: 10px 18px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      transition: transform 0.3s;
+      z-index: 999;
+      max-width: 500px;
+      text-align: center;
+    }
+
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── WebGPU warning ── */
+    #webgpu-warning {
+      background: rgba(251, 191, 36, 0.08);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: var(--yellow);
+      font-size: 12px;
+      padding: 8px 16px;
+      text-align: center;
+      display: none;
+    }
+
+    #webgpu-warning.visible { display: block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <!-- code icon -->
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+         stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="16 18 22 12 16 6"/>
+      <polyline points="8 6 2 12 8 18"/>
+    </svg>
+    WebLLM Page Creator
+  </div>
+  <span class="badge">Qwen2.5-Coder</span>
+
+  <div id="model-status">
+    <div id="status-dot"></div>
+    <span id="status-text">Initializing…</span>
+  </div>
+</header>
+
+<div id="webgpu-warning">
+  ⚠️ WebGPU is not available in your browser. Please use Chrome 113+ or Edge 113+ with WebGPU enabled.
+</div>
+
+<main>
+  <!-- Left: prompt panel -->
+  <div class="panel-left">
+    <div class="panel-title">Describe your page</div>
+
+    <textarea id="prompt-area" placeholder="E.g. A dark-themed landing page for a SaaS product called &quot;Orbit&quot; with a hero section, feature cards, and a pricing table."></textarea>
+
+    <div class="examples">
+      <p>Quick examples</p>
+      <button class="example-btn" data-prompt="A beautiful personal portfolio page with a hero section, about me, skills grid, and contact form. Use a clean minimal design with blue accents.">Personal portfolio</button>
+      <button class="example-btn" data-prompt="A responsive product landing page for a mobile app called &apos;Zenly&apos;. Include a hero, features list, testimonials, and a call-to-action. Use gradient purple/pink colors.">Product landing page</button>
+      <button class="example-btn" data-prompt="A simple task manager web app with a sidebar for categories, a main area to list tasks with checkboxes, and a form to add new tasks. Dark theme.">Task manager UI</button>
+      <button class="example-btn" data-prompt="A restaurant website with a full-screen hero image, menu section with food cards, about section, and a reservation form. Use warm earthy colors.">Restaurant website</button>
+    </div>
+
+    <div id="progress-wrap">
+      <div id="progress-bar-bg"><div id="progress-bar"></div></div>
+      <div id="progress-label">Loading model…</div>
+    </div>
+
+    <button class="btn-generate" id="btn-generate" disabled>
+      <div class="spinner" id="gen-spinner"></div>
+      <span id="btn-label">Loading model…</span>
+    </button>
+  </div>
+
+  <!-- Center: code output -->
+  <div class="panel-code">
+    <div class="code-header">
+      <span class="panel-title">Generated HTML</span>
+      <button class="btn-copy" id="btn-copy" onclick="copyCode()">Copy</button>
+      <button class="btn-download" id="btn-download" onclick="downloadCode()">Download</button>
+    </div>
+    <div id="code-empty" class="empty-state">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="16 18 22 12 16 6"/>
+        <polyline points="8 6 2 12 8 18"/>
+      </svg>
+      <span>Generated code will appear here</span>
+    </div>
+    <pre id="code-output" style="display:none"></pre>
+  </div>
+
+  <!-- Right: preview -->
+  <div class="panel-preview">
+    <div class="preview-header">
+      <span class="panel-title">Live Preview</span>
+      <button class="btn-refresh" onclick="refreshPreview()">Refresh</button>
+    </div>
+    <div id="preview-empty" class="empty-state">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+        <line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+      <span>Preview will appear here after generation</span>
+    </div>
+    <iframe id="preview-frame" style="display:none" sandbox="allow-scripts allow-same-origin"></iframe>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script type="module">
+import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const statusDot   = document.getElementById("status-dot");
+const statusText  = document.getElementById("status-text");
+const progressWrap = document.getElementById("progress-wrap");
+const progressBar  = document.getElementById("progress-bar");
+const progressLabel = document.getElementById("progress-label");
+const btnGenerate  = document.getElementById("btn-generate");
+const btnLabel     = document.getElementById("btn-label");
+const spinner      = document.getElementById("gen-spinner");
+const promptArea   = document.getElementById("prompt-area");
+const codeEmpty    = document.getElementById("code-empty");
+const codeOutput   = document.getElementById("code-output");
+const previewEmpty = document.getElementById("preview-empty");
+const previewFrame = document.getElementById("preview-frame");
+const toast        = document.getElementById("toast");
+const webgpuWarn   = document.getElementById("webgpu-warning");
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let engine = null;
+let isGenerating = false;
+let latestCode = "";
+
+// ── WebGPU check ──────────────────────────────────────────────────────────────
+if (!navigator.gpu) {
+  webgpuWarn.classList.add("visible");
+}
+
+// ── Toast helper ──────────────────────────────────────────────────────────────
+function showToast(msg, duration = 4000) {
+  toast.textContent = msg;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), duration);
+}
+
+// ── Status helper ─────────────────────────────────────────────────────────────
+function setStatus(state, text) {
+  statusDot.className = state;
+  statusText.textContent = text;
+}
+
+// ── Model init ────────────────────────────────────────────────────────────────
+const MODEL_ID = "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC";
+
+async function initEngine() {
+  setStatus("loading", "Loading model…");
+  progressWrap.classList.add("visible");
+  btnLabel.textContent = "Loading model…";
+
+  try {
+    engine = await webllm.CreateMLCEngine(MODEL_ID, {
+      initProgressCallback: (report) => {
+        const pct = Math.round(report.progress * 100);
+        progressBar.style.width = pct + "%";
+        progressLabel.textContent = report.text || `Loading… ${pct}%`;
+      },
+    });
+
+    progressWrap.classList.remove("visible");
+    setStatus("ready", "Model ready");
+    btnLabel.textContent = "Generate page";
+    btnGenerate.disabled = false;
+  } catch (err) {
+    progressWrap.classList.remove("visible");
+    setStatus("error", "Failed to load model");
+    btnLabel.textContent = "Model failed — retry?";
+    btnGenerate.disabled = false;
+    btnGenerate.onclick = initEngine;
+    showToast("Error loading model: " + err.message, 8000);
+    console.error(err);
+  }
+}
+
+// ── Generate ──────────────────────────────────────────────────────────────────
+const SYSTEM_PROMPT = `You are an expert web developer. When given a description, you output a single, complete, self-contained HTML file.
+
+Rules:
+- Output ONLY raw HTML. No markdown, no code fences, no explanation.
+- Include all CSS in a <style> tag inside <head>.
+- Include all JavaScript in a <script> tag before </body>.
+- Use modern, responsive design with beautiful aesthetics.
+- Do not use external resources (no CDN links, no image URLs). Use CSS shapes and gradients for visuals.
+- The page must look professional and polished.
+- Start your output with <!DOCTYPE html> and end with </html>.`;
+
+async function generate() {
+  const prompt = promptArea.value.trim();
+  if (!prompt) { showToast("Please enter a page description first."); return; }
+  if (!engine)  { showToast("Model is not loaded yet."); return; }
+  if (isGenerating) return;
+
+  isGenerating = true;
+  btnGenerate.disabled = true;
+  spinner.classList.add("active");
+  btnLabel.textContent = "Generating…";
+
+  // Show code panel, clear it
+  codeEmpty.style.display = "none";
+  codeOutput.style.display = "block";
+  codeOutput.textContent = "";
+  codeOutput.classList.add("streaming");
+
+  previewEmpty.style.display = "flex";
+  previewFrame.style.display = "none";
+
+  latestCode = "";
+
+  try {
+    const stream = await engine.chat.completions.create({
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user",   content: prompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 4096,
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content ?? "";
+      latestCode += delta;
+      codeOutput.textContent = latestCode;
+      // Auto-scroll code panel
+      codeOutput.scrollTop = codeOutput.scrollHeight;
+    }
+
+    codeOutput.classList.remove("streaming");
+
+    // Extract HTML (strip possible markdown fences if model added them)
+    const html = extractHTML(latestCode);
+    latestCode = html;
+    codeOutput.textContent = html;
+
+    // Show preview
+    renderPreview(html);
+  } catch (err) {
+    showToast("Generation error: " + err.message, 6000);
+    console.error(err);
+    codeOutput.classList.remove("streaming");
+  } finally {
+    isGenerating = false;
+    btnGenerate.disabled = false;
+    spinner.classList.remove("active");
+    btnLabel.textContent = "Generate page";
+  }
+}
+
+function extractHTML(raw) {
+  // Strip ```html ... ``` fences if the model wrapped output
+  const fenced = raw.match(/```(?:html)?\s*([\s\S]*?)```/i);
+  if (fenced) return fenced[1].trim();
+  // Strip any leading/trailing text before <!DOCTYPE
+  const doctype = raw.match(/(<!DOCTYPE[\s\S]*<\/html>)/i);
+  if (doctype) return doctype[1].trim();
+  return raw.trim();
+}
+
+function renderPreview(html) {
+  previewEmpty.style.display = "none";
+  previewFrame.style.display = "block";
+  previewFrame.srcdoc = html;
+}
+
+function refreshPreview() {
+  if (latestCode) renderPreview(latestCode);
+}
+
+// ── Copy / Download ───────────────────────────────────────────────────────────
+window.copyCode = async function() {
+  if (!latestCode) return;
+  try {
+    await navigator.clipboard.writeText(latestCode);
+    const btn = document.getElementById("btn-copy");
+    btn.textContent = "Copied!";
+    setTimeout(() => btn.textContent = "Copy", 1500);
+  } catch { showToast("Copy failed — please select and copy manually."); }
+};
+
+window.downloadCode = function() {
+  if (!latestCode) return;
+  const blob = new Blob([latestCode], { type: "text/html" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "generated-page.html";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+window.refreshPreview = refreshPreview;
+
+// ── Example buttons ───────────────────────────────────────────────────────────
+document.querySelectorAll(".example-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    promptArea.value = btn.dataset.prompt;
+    promptArea.focus();
+  });
+});
+
+// ── Generate button ───────────────────────────────────────────────────────────
+btnGenerate.addEventListener("click", generate);
+
+// Ctrl+Enter shortcut
+promptArea.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") generate();
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+initEngine();
+</script>
+</body>
+</html>
