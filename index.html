@@ -595,9 +595,15 @@
 
   if (!compatible) {
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', showCompatScreen);
+      document.addEventListener('DOMContentLoaded', function () {
+        showCompatScreen();
+        var btn = document.getElementById('btn-generate');
+        if (btn) btn.disabled = true;
+      });
     } else {
       showCompatScreen();
+      var btn = document.getElementById('btn-generate');
+      if (btn) btn.disabled = true;
     }
   }
 }());
@@ -605,12 +611,6 @@
 
 <script type="module">
 import * as webllm from "https://esm.run/@mlc-ai/web-llm";
-
-// Abort early if the compatibility check failed
-if (!window.__browserCompatible) {
-  // Compatibility screen is already shown; nothing more to do.
-  throw new Error('Browser is not compatible with WebLLM.');
-}
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const statusDot   = document.getElementById("status-dot");
