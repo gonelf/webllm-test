@@ -634,6 +634,29 @@ let isGenerating = false;
 let isLoading = false;
 let latestCode = "";
 
+// ── Async GPU adapter check ────────────────────────────────────────────────────
+// navigator.gpu existing doesn't guarantee a usable adapter (e.g. no GPU, or
+// the driver doesn't expose WebGPU). requestAdapter() resolves to null in that
+// case, which is what WebLLM reports as "Unable to find a compatible GPU."
+(async function checkGPUAdapter() {
+  if (!navigator.gpu) return; // already caught by the sync check
+  const adapter = await navigator.gpu.requestAdapter().catch(() => null);
+  if (adapter) return; // all good
+
+  // No usable adapter — show the compat screen with an updated message.
+  const screen = document.getElementById("compat-screen");
+  const checkEl = document.getElementById("check-webgpu");
+  if (checkEl) {
+    checkEl.querySelector(".check-icon").textContent = "✗";
+    checkEl.classList.add("fail");
+    checkEl.querySelector("span:last-child").textContent =
+      "WebGPU (API present but no compatible GPU adapter found)";
+  }
+  if (screen) screen.classList.remove("hidden");
+  btnGenerate.disabled = true;
+  setStatus("error", "No compatible GPU");
+})();
+
 // ── Toast helper ──────────────────────────────────────────────────────────────
 function showToast(msg, duration = 4000) {
   toast.textContent = msg;
