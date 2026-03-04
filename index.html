@@ -481,17 +481,7 @@
     </div>
   </div>
 
-  <p>Supported browsers:</p>
-  <div class="compat-browsers">
-    <div class="compat-browser-badge">Chrome 113+</div>
-    <div class="compat-browser-badge">Edge 113+</div>
-    <div class="compat-browser-badge">Brave</div>
-  </div>
-  <p style="font-size:12px;">
-    <strong style="color:var(--text)">Chrome / Edge:</strong> enable WebGPU at <code style="color:var(--accent)">chrome://flags/#enable-unsafe-webgpu</code><br><br>
-    <strong style="color:var(--text)">Brave:</strong> go to <code style="color:var(--accent)">brave://flags/#enable-unsafe-webgpu</code> and set it to <em>Enabled</em>, then relaunch.
-    Alternatively, click the Brave Shields icon and set <em>Fingerprinting blocking</em> to <em>Allow all fingerprinting</em> for this site.
-  </p>
+  <div id="compat-advice"></div>
 </div>
 
 <main>
@@ -570,6 +560,72 @@
 
   var compatible = checks.webgpu && checks.wasm;
 
+  // ── Browser detection ───────────────────────────────────────────────────────
+  function detectBrowser() {
+    var ua = navigator.userAgent;
+    if (/Edg\//.test(ua))              return 'edge';
+    if (/OPR\/|Opera/.test(ua))        return 'opera';
+    if (/SamsungBrowser/.test(ua))     return 'samsung';
+    if (/Firefox\//.test(ua))          return 'firefox';
+    if (/Safari\//.test(ua) && !/Chrome/.test(ua)) return 'safari';
+    if (/Chrome\//.test(ua))           return 'chrome'; // may be Brave — checked async
+    return 'unknown';
+  }
+
+  var ADVICE = {
+    firefox: {
+      label: 'Firefox',
+      html: '<p>Firefox does not yet support WebGPU. Please switch to <strong style="color:var(--text)">Chrome 113+</strong> or <strong style="color:var(--text)">Edge 113+</strong>.</p>'
+        + '<div class="compat-browsers"><div class="compat-browser-badge">Chrome 113+</div><div class="compat-browser-badge">Edge 113+</div><div class="compat-browser-badge">Brave</div></div>',
+    },
+    safari: {
+      label: 'Safari',
+      html: '<p>Safari\'s WebGPU support is incomplete and not yet supported by WebLLM. Please switch to <strong style="color:var(--text)">Chrome 113+</strong> or <strong style="color:var(--text)">Edge 113+</strong>.</p>'
+        + '<div class="compat-browsers"><div class="compat-browser-badge">Chrome 113+</div><div class="compat-browser-badge">Edge 113+</div><div class="compat-browser-badge">Brave</div></div>',
+    },
+    opera: {
+      label: 'Opera',
+      html: '<p>Opera is not officially supported. Please use <strong style="color:var(--text)">Chrome 113+</strong> or <strong style="color:var(--text)">Edge 113+</strong>.</p>'
+        + '<div class="compat-browsers"><div class="compat-browser-badge">Chrome 113+</div><div class="compat-browser-badge">Edge 113+</div></div>',
+    },
+    samsung: {
+      label: 'Samsung Internet',
+      html: '<p>Samsung Internet does not support WebGPU. Please use <strong style="color:var(--text)">Chrome 113+</strong> on a desktop device.</p>'
+        + '<div class="compat-browsers"><div class="compat-browser-badge">Chrome 113+</div><div class="compat-browser-badge">Edge 113+</div></div>',
+    },
+    brave: {
+      label: 'Brave',
+      html: '<p>Brave blocks WebGPU by default to prevent fingerprinting. Enable it one of two ways:</p>'
+        + '<p style="font-size:12px;margin-top:4px">'
+        + '<strong style="color:var(--text)">Option 1 — Flags (permanent):</strong> go to <code style="color:var(--accent)">brave://flags/#enable-unsafe-webgpu</code>, set it to <em>Enabled</em>, then relaunch.<br><br>'
+        + '<strong style="color:var(--text)">Option 2 — Shields (this site only):</strong> click the Brave lion icon in the address bar → set <em>Fingerprinting blocking</em> to <em>Allow all fingerprinting</em>.'
+        + '</p>',
+    },
+    edge: {
+      label: 'Edge',
+      html: '<p>WebGPU may be disabled. Enable it at <code style="color:var(--accent)">edge://flags/#enable-unsafe-webgpu</code>, then relaunch.</p>',
+    },
+    chrome: {
+      label: 'Chrome',
+      html: '<p>WebGPU may be disabled. Enable it at <code style="color:var(--accent)">chrome://flags/#enable-unsafe-webgpu</code>, then relaunch.</p>',
+    },
+    unknown: {
+      label: 'your browser',
+      html: '<p>Please switch to a supported browser:</p>'
+        + '<div class="compat-browsers"><div class="compat-browser-badge">Chrome 113+</div><div class="compat-browser-badge">Edge 113+</div><div class="compat-browser-badge">Brave</div></div>',
+    },
+  };
+
+  function renderAdvice(key) {
+    var advice = ADVICE[key] || ADVICE.unknown;
+    var el = document.getElementById('compat-advice');
+    if (!el) return;
+    el.innerHTML =
+      '<p style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Detected browser: <strong style="color:var(--text)">' + advice.label + '</strong></p>'
+      + advice.html;
+  }
+
+  // ── Check rendering ─────────────────────────────────────────────────────────
   function applyCheck(id, ok, warnOnly) {
     var el = document.getElementById(id);
     if (!el) return;
@@ -586,12 +642,13 @@
     }
   }
 
-  function showCompatScreen() {
+  function showCompatScreen(browserKey) {
     var screen = document.getElementById('compat-screen');
     if (screen) screen.classList.remove('hidden');
-    applyCheck('check-webgpu',   checks.webgpu,    false);
-    applyCheck('check-wasm',     checks.wasm,      false);
-    applyCheck('check-isolation',checks.isolation, true);
+    applyCheck('check-webgpu',    checks.webgpu,    false);
+    applyCheck('check-wasm',      checks.wasm,      false);
+    applyCheck('check-isolation', checks.isolation,  true);
+    renderAdvice(browserKey);
   }
 
   // Expose result for the module script
@@ -599,16 +656,24 @@
   window.__browserChecks = checks;
 
   if (!compatible) {
+    var browserKey = detectBrowser();
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function () {
-        showCompatScreen();
+        showCompatScreen(browserKey);
         var btn = document.getElementById('btn-generate');
         if (btn) btn.disabled = true;
       });
     } else {
-      showCompatScreen();
+      showCompatScreen(browserKey);
       var btn = document.getElementById('btn-generate');
       if (btn) btn.disabled = true;
+    }
+
+    // Async Brave detection: UA looks identical to Chrome
+    if (browserKey === 'chrome' && navigator.brave && navigator.brave.isBrave) {
+      navigator.brave.isBrave().then(function (isBrave) {
+        if (isBrave) renderAdvice('brave');
+      });
     }
   }
 }());
@@ -660,6 +725,23 @@ let latestCode = "";
   if (screen) screen.classList.remove("hidden");
   btnGenerate.disabled = true;
   setStatus("error", "No compatible GPU");
+
+  // Show browser-specific advice (Brave blocks requestAdapter by default)
+  const isBrave = navigator.brave && await navigator.brave.isBrave().catch(() => false);
+  const adviceEl = document.getElementById("compat-advice");
+  if (adviceEl && !adviceEl.innerHTML) {
+    const key = isBrave ? "brave" : (document.documentElement.dataset.browser || "chrome");
+    // Reuse the IIFE-rendered advice if already set, otherwise inject for Brave
+    if (isBrave) {
+      adviceEl.innerHTML =
+        '<p style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Detected browser: <strong style="color:var(--text)">Brave</strong></p>'
+        + '<p>Brave blocks WebGPU by default. Enable it one of two ways:</p>'
+        + '<p style="font-size:12px;margin-top:4px">'
+        + '<strong style="color:var(--text)">Option 1 — Flags (permanent):</strong> go to <code style="color:var(--accent)">brave://flags/#enable-unsafe-webgpu</code>, set it to <em>Enabled</em>, then relaunch.<br><br>'
+        + '<strong style="color:var(--text)">Option 2 — Shields (this site only):</strong> click the Brave lion icon → set <em>Fingerprinting blocking</em> to <em>Allow all fingerprinting</em>.'
+        + '</p>';
+    }
+  }
 })();
 
 // ── Toast helper ──────────────────────────────────────────────────────────────
