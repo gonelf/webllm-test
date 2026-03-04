@@ -1,0 +1,11 @@
+{
+  "name": "webllm-page-creator",
+  "version": "1.0.0",
+  "description": "In-browser web page creation tool powered by WebLLM and Qwen2.5-Coder",
+  "scripts": {
+    "dev": "npx serve . --cors -l 8080",
+    "start": "npx serve . --cors -l 8080"
+  },
+  "keywords": ["webllm", "qwen", "llm", "web-gpu", "code-generation"],
+  "license": "MIT"
+}
