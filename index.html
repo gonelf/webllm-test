@@ -361,18 +361,79 @@
 
     #toast.show { transform: translateX(-50%) translateY(0); }
 
-    /* ── WebGPU warning ── */
-    #webgpu-warning {
-      background: rgba(251, 191, 36, 0.08);
-      border: 1px solid rgba(251, 191, 36, 0.3);
-      color: var(--yellow);
-      font-size: 12px;
-      padding: 8px 16px;
+    /* ── Compatibility screen ── */
+    #compat-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 9999;
+      padding: 40px;
       text-align: center;
-      display: none;
     }
 
-    #webgpu-warning.visible { display: block; }
+    #compat-screen.hidden { display: none; }
+
+    #compat-screen h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0;
+    }
+
+    #compat-screen p {
+      color: var(--text-muted);
+      font-size: 14px;
+      max-width: 480px;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .compat-checks {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 24px;
+      min-width: 300px;
+    }
+
+    .compat-check {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .compat-check .check-icon {
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .compat-check.pass { color: var(--green); }
+    .compat-check.fail { color: var(--red); }
+    .compat-check.warn { color: var(--yellow); }
+
+    .compat-browsers {
+      display: flex;
+      gap: 16px;
+      margin-top: 4px;
+    }
+
+    .compat-browser-badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
   </style>
 </head>
 <body>
@@ -395,8 +456,37 @@
   </div>
 </header>
 
-<div id="webgpu-warning">
-  ⚠️ WebGPU is not available in your browser. Please use Chrome 113+ or Edge 113+ with WebGPU enabled.
+<div id="compat-screen" class="hidden">
+  <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)"
+       stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+    <line x1="12" y1="9" x2="12" y2="13"/>
+    <line x1="12" y1="17" x2="12.01" y2="17"/>
+  </svg>
+  <h2>Browser Not Compatible</h2>
+  <p>This app requires WebGPU to run AI models locally in your browser. Your current browser is missing one or more required features.</p>
+
+  <div class="compat-checks">
+    <div class="compat-check" id="check-webgpu">
+      <span class="check-icon">…</span>
+      <span>WebGPU</span>
+    </div>
+    <div class="compat-check" id="check-wasm">
+      <span class="check-icon">…</span>
+      <span>WebAssembly</span>
+    </div>
+    <div class="compat-check" id="check-isolation">
+      <span class="check-icon">…</span>
+      <span>Cross-origin isolation (SharedArrayBuffer)</span>
+    </div>
+  </div>
+
+  <p>Please switch to a supported browser:</p>
+  <div class="compat-browsers">
+    <div class="compat-browser-badge">Chrome 113+</div>
+    <div class="compat-browser-badge">Edge 113+</div>
+  </div>
+  <p style="font-size:12px;">On Chrome, you may also need to enable WebGPU at <code style="color:var(--accent)">chrome://flags/#enable-unsafe-webgpu</code></p>
 </div>
 
 <main>
@@ -464,8 +554,63 @@
 
 <div id="toast"></div>
 
+<script>
+// Browser compatibility check — runs synchronously before the module loads.
+(function () {
+  var checks = {
+    webgpu:    typeof navigator !== 'undefined' && !!navigator.gpu,
+    wasm:      typeof WebAssembly !== 'undefined',
+    isolation: typeof crossOriginIsolated !== 'undefined' && crossOriginIsolated,
+  };
+
+  var compatible = checks.webgpu && checks.wasm;
+
+  function applyCheck(id, ok, warnOnly) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var icon = el.querySelector('.check-icon');
+    if (ok) {
+      el.classList.add('pass');
+      if (icon) icon.textContent = '✓';
+    } else if (warnOnly) {
+      el.classList.add('warn');
+      if (icon) icon.textContent = '⚠';
+    } else {
+      el.classList.add('fail');
+      if (icon) icon.textContent = '✗';
+    }
+  }
+
+  function showCompatScreen() {
+    var screen = document.getElementById('compat-screen');
+    if (screen) screen.classList.remove('hidden');
+    applyCheck('check-webgpu',   checks.webgpu,    false);
+    applyCheck('check-wasm',     checks.wasm,      false);
+    applyCheck('check-isolation',checks.isolation, true);
+  }
+
+  // Expose result for the module script
+  window.__browserCompatible = compatible;
+  window.__browserChecks = checks;
+
+  if (!compatible) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', showCompatScreen);
+    } else {
+      showCompatScreen();
+    }
+  }
+}());
+</script>
+
 <script type="module">
 import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+// Abort early if the compatibility check failed
+if (!window.__browserCompatible) {
+  // Compatibility screen is already shown; nothing more to do.
+  throw new Error('Browser is not compatible with WebLLM.');
+}
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const statusDot   = document.getElementById("status-dot");
@@ -482,18 +627,12 @@ const codeOutput   = document.getElementById("code-output");
 const previewEmpty = document.getElementById("preview-empty");
 const previewFrame = document.getElementById("preview-frame");
 const toast        = document.getElementById("toast");
-const webgpuWarn   = document.getElementById("webgpu-warning");
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let engine = null;
 let isGenerating = false;
 let isLoading = false;
 let latestCode = "";
-
-// ── WebGPU check ──────────────────────────────────────────────────────────────
-if (!navigator.gpu) {
-  webgpuWarn.classList.add("visible");
-}
 
 // ── Toast helper ──────────────────────────────────────────────────────────────
 function showToast(msg, duration = 4000) {
