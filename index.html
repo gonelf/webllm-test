@@ -163,6 +163,76 @@
       background: rgba(108, 99, 255, 0.08);
     }
 
+    /* ── Cloud API key section (left panel) ── */
+    .cloud-section {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .cloud-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .cloud-key-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .cloud-key-row input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 12px;
+      padding: 6px 10px;
+      outline: none;
+      font-family: var(--font-mono);
+      transition: border-color 0.15s;
+      min-width: 0;
+    }
+
+    .cloud-key-row input::placeholder { color: var(--text-muted); }
+    .cloud-key-row input:focus { border-color: var(--accent); }
+
+    .cloud-key-row .btn-cloud-save {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 12px;
+      padding: 6px 10px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .cloud-key-row .btn-cloud-save:hover { border-color: var(--accent); }
+    .cloud-key-row .btn-cloud-save.active {
+      background: rgba(108, 99, 255, 0.15);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .cloud-section-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    .cloud-section-hint a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .cloud-section-hint a:hover { text-decoration: underline; }
+
     .btn-generate {
       margin: 12px 16px 16px;
       padding: 12px;
@@ -374,6 +444,7 @@
       z-index: 9999;
       padding: 40px;
       text-align: center;
+      overflow-y: auto;
     }
 
     #compat-screen.hidden { display: none; }
@@ -385,7 +456,7 @@
       margin: 0;
     }
 
-    #compat-screen p {
+    #compat-screen > p {
       color: var(--text-muted);
       font-size: 14px;
       max-width: 480px;
@@ -434,6 +505,100 @@
       font-size: 13px;
       color: var(--text-muted);
     }
+
+    /* ── Cloud escape hatch on compat screen ── */
+    .compat-cloud-escape {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      text-align: left;
+    }
+
+    .compat-cloud-escape .escape-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .compat-cloud-escape .escape-title::before {
+      content: "";
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+    }
+
+    .compat-cloud-escape p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .compat-cloud-escape a { color: var(--accent); text-decoration: none; }
+    .compat-cloud-escape a:hover { text-decoration: underline; }
+
+    .compat-cloud-escape .cloud-key-row { margin-top: 4px; }
+
+    .compat-cloud-escape .cloud-key-row input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 12px;
+      padding: 8px 10px;
+      outline: none;
+      font-family: var(--font-mono);
+      transition: border-color 0.15s;
+      min-width: 0;
+    }
+
+    .compat-cloud-escape .cloud-key-row input::placeholder { color: var(--text-muted); }
+    .compat-cloud-escape .cloud-key-row input:focus { border-color: var(--accent); }
+
+    .btn-compat-cloud {
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+
+    .btn-compat-cloud:hover { background: var(--accent-hover); }
+
+    .compat-or {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .compat-or::before, .compat-or::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
   </style>
 </head>
 <body>
@@ -448,7 +613,7 @@
     </svg>
     WebLLM Page Creator
   </div>
-  <span class="badge">Qwen2.5-Coder</span>
+  <span class="badge" id="mode-badge">Qwen2.5-Coder</span>
 
   <div id="model-status">
     <div id="status-dot"></div>
@@ -463,8 +628,8 @@
     <line x1="12" y1="9" x2="12" y2="13"/>
     <line x1="12" y1="17" x2="12.01" y2="17"/>
   </svg>
-  <h2>Browser Not Compatible</h2>
-  <p>This app requires WebGPU to run AI models locally in your browser. Your current browser is missing one or more required features.</p>
+  <h2>Browser Not Compatible with Local AI</h2>
+  <p>This browser is missing WebGPU, which is required to run AI models locally. You can switch to a supported browser, or use the Groq cloud API instead — it's free and works everywhere.</p>
 
   <div class="compat-checks">
     <div class="compat-check" id="check-webgpu">
@@ -482,6 +647,17 @@
   </div>
 
   <div id="compat-advice"></div>
+
+  <div class="compat-or">or</div>
+
+  <div class="compat-cloud-escape">
+    <div class="escape-title">Use Groq Cloud API (free, works on any browser)</div>
+    <p>Enter a free <a href="https://console.groq.com" target="_blank">Groq API key</a> to generate pages via the cloud using Qwen2.5-Coder-32B — no GPU needed.</p>
+    <div class="cloud-key-row">
+      <input type="password" id="compat-cloud-key" placeholder="gsk_…" autocomplete="off" />
+      <button class="btn-compat-cloud" id="btn-compat-cloud">Continue →</button>
+    </div>
+  </div>
 </div>
 
 <main>
@@ -497,6 +673,19 @@
       <button class="example-btn" data-prompt="A responsive product landing page for a mobile app called &apos;Zenly&apos;. Include a hero, features list, testimonials, and a call-to-action. Use gradient purple/pink colors.">Product landing page</button>
       <button class="example-btn" data-prompt="A simple task manager web app with a sidebar for categories, a main area to list tasks with checkboxes, and a form to add new tasks. Dark theme.">Task manager UI</button>
       <button class="example-btn" data-prompt="A restaurant website with a full-screen hero image, menu section with food cards, about section, and a reservation form. Use warm earthy colors.">Restaurant website</button>
+    </div>
+
+    <!-- Cloud API key (optional — overrides local WebLLM) -->
+    <div class="cloud-section">
+      <div class="cloud-section-label">Cloud API key (optional)</div>
+      <div class="cloud-key-row">
+        <input type="password" id="cloud-key-input" placeholder="Groq key (gsk_…)" autocomplete="off" />
+        <button class="btn-cloud-save" id="btn-cloud-save">Save</button>
+      </div>
+      <div class="cloud-section-hint">
+        Paste a <a href="https://console.groq.com" target="_blank">Groq API key</a> to use
+        cloud inference on any browser. Leave blank to use local WebLLM.
+      </div>
     </div>
 
     <div id="progress-wrap">
@@ -575,22 +764,22 @@
   var ADVICE = {
     firefox: {
       label: 'Firefox',
-      html: '<p>Firefox does not yet support WebGPU. Please switch to <strong style="color:var(--text)">Chrome 113+</strong> or <strong style="color:var(--text)">Edge 113+</strong>.</p>'
+      html: '<p>Firefox does not yet support WebGPU. Please switch to <strong style="color:var(--text)">Chrome 113+</strong> or <strong style="color:var(--text)">Edge 113+</strong>, or use the Groq cloud API below.</p>'
         + '<div class="compat-browsers"><div class="compat-browser-badge">Chrome 113+</div><div class="compat-browser-badge">Edge 113+</div><div class="compat-browser-badge">Brave</div></div>',
     },
     safari: {
-      label: 'Safari',
-      html: '<p>Safari\'s WebGPU support is incomplete and not yet supported by WebLLM. Please switch to <strong style="color:var(--text)">Chrome 113+</strong> or <strong style="color:var(--text)">Edge 113+</strong>.</p>'
+      label: 'Safari / iPhone',
+      html: '<p>Safari\'s WebGPU support is incomplete. Please switch to <strong style="color:var(--text)">Chrome 113+</strong> or use the Groq cloud API below.</p>'
         + '<div class="compat-browsers"><div class="compat-browser-badge">Chrome 113+</div><div class="compat-browser-badge">Edge 113+</div><div class="compat-browser-badge">Brave</div></div>',
     },
     opera: {
       label: 'Opera',
-      html: '<p>Opera is not officially supported. Please use <strong style="color:var(--text)">Chrome 113+</strong> or <strong style="color:var(--text)">Edge 113+</strong>.</p>'
+      html: '<p>Opera is not officially supported. Please use <strong style="color:var(--text)">Chrome 113+</strong> or <strong style="color:var(--text)">Edge 113+</strong>, or use the Groq cloud API below.</p>'
         + '<div class="compat-browsers"><div class="compat-browser-badge">Chrome 113+</div><div class="compat-browser-badge">Edge 113+</div></div>',
     },
     samsung: {
       label: 'Samsung Internet',
-      html: '<p>Samsung Internet does not support WebGPU. Please use <strong style="color:var(--text)">Chrome 113+</strong> on a desktop device.</p>'
+      html: '<p>Samsung Internet does not support WebGPU. Please use <strong style="color:var(--text)">Chrome 113+</strong> on a desktop device, or use the Groq cloud API below.</p>'
         + '<div class="compat-browsers"><div class="compat-browser-badge">Chrome 113+</div><div class="compat-browser-badge">Edge 113+</div></div>',
     },
     brave: {
@@ -607,7 +796,8 @@
     },
     chrome: {
       label: 'Chrome',
-      html: '<p>WebGPU may be disabled. Enable it at <code style="color:var(--accent)">chrome://flags/#enable-unsafe-webgpu</code>, then relaunch.</p>',
+      html: '<p>WebGPU requires hardware acceleration. Go to <code style="color:var(--accent)">chrome://settings/system</code>, turn on <em>Use hardware acceleration when available</em>, then relaunch Chrome.</p>'
+        + '<p style="font-size:12px;margin-top:8px">If hardware acceleration is already on, your GPU or driver may not support WebGPU — try updating your GPU drivers.</p>',
     },
     unknown: {
       label: 'your browser',
@@ -683,8 +873,9 @@
 import * as webllm from "https://esm.run/@mlc-ai/web-llm";
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
-const statusDot   = document.getElementById("status-dot");
-const statusText  = document.getElementById("status-text");
+const statusDot    = document.getElementById("status-dot");
+const statusText   = document.getElementById("status-text");
+const modeBadge    = document.getElementById("mode-badge");
 const progressWrap = document.getElementById("progress-wrap");
 const progressBar  = document.getElementById("progress-bar");
 const progressLabel = document.getElementById("progress-label");
@@ -698,22 +889,26 @@ const previewEmpty = document.getElementById("preview-empty");
 const previewFrame = document.getElementById("preview-frame");
 const toast        = document.getElementById("toast");
 
+// Cloud API controls
+const cloudKeyInput    = document.getElementById("cloud-key-input");
+const btnCloudSave     = document.getElementById("btn-cloud-save");
+const compatCloudKey   = document.getElementById("compat-cloud-key");
+const btnCompatCloud   = document.getElementById("btn-compat-cloud");
+
 // ── State ─────────────────────────────────────────────────────────────────────
 let engine = null;
 let isGenerating = false;
 let isLoading = false;
 let latestCode = "";
+let cloudApiKey = "";   // non-empty = cloud mode active
+let cloudMode = false;
 
 // ── Async GPU adapter check ────────────────────────────────────────────────────
-// navigator.gpu existing doesn't guarantee a usable adapter (e.g. no GPU, or
-// the driver doesn't expose WebGPU). requestAdapter() resolves to null in that
-// case, which is what WebLLM reports as "Unable to find a compatible GPU."
 (async function checkGPUAdapter() {
-  if (!navigator.gpu) return; // already caught by the sync check
+  if (!navigator.gpu) return;
   const adapter = await navigator.gpu.requestAdapter().catch(() => null);
-  if (adapter) return; // all good
+  if (adapter) return;
 
-  // No usable adapter — show the compat screen with an updated message.
   const screen = document.getElementById("compat-screen");
   const checkEl = document.getElementById("check-webgpu");
   if (checkEl) {
@@ -726,12 +921,9 @@ let latestCode = "";
   btnGenerate.disabled = true;
   setStatus("error", "No compatible GPU");
 
-  // Show browser-specific advice (Brave blocks requestAdapter by default)
   const isBrave = navigator.brave && await navigator.brave.isBrave().catch(() => false);
   const adviceEl = document.getElementById("compat-advice");
   if (adviceEl && !adviceEl.innerHTML) {
-    const key = isBrave ? "brave" : (document.documentElement.dataset.browser || "chrome");
-    // Reuse the IIFE-rendered advice if already set, otherwise inject for Brave
     if (isBrave) {
       adviceEl.innerHTML =
         '<p style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Detected browser: <strong style="color:var(--text)">Brave</strong></p>'
@@ -739,6 +931,15 @@ let latestCode = "";
         + '<p style="font-size:12px;margin-top:4px">'
         + '<strong style="color:var(--text)">Option 1 — Flags (permanent):</strong> go to <code style="color:var(--accent)">brave://flags/#enable-unsafe-webgpu</code>, set it to <em>Enabled</em>, then relaunch.<br><br>'
         + '<strong style="color:var(--text)">Option 2 — Shields (this site only):</strong> click the Brave lion icon → set <em>Fingerprinting blocking</em> to <em>Allow all fingerprinting</em>.'
+        + '</p>';
+    } else {
+      adviceEl.innerHTML =
+        '<p style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Detected browser: <strong style="color:var(--text)">Chrome</strong></p>'
+        + '<p>Chrome found the WebGPU API but could not access a compatible GPU adapter.</p>'
+        + '<p style="font-size:12px;margin-top:8px">'
+        + '<strong style="color:var(--text)">Option 1 — Enable hardware acceleration:</strong> go to <code style="color:var(--accent)">chrome://settings/system</code>, turn on <em>Use hardware acceleration when available</em>, then relaunch.<br><br>'
+        + '<strong style="color:var(--text)">Option 2 — Allow software fallback:</strong> go to <code style="color:var(--accent)">chrome://flags/#ignore-gpu-blocklist</code>, set it to <em>Enabled</em>, then relaunch.<br><br>'
+        + '<strong style="color:var(--text)">Option 3 — Update GPU drivers</strong> to the latest version for your graphics card.'
         + '</p>';
     }
   }
@@ -757,7 +958,74 @@ function setStatus(state, text) {
   statusText.textContent = text;
 }
 
-// ── Model init ────────────────────────────────────────────────────────────────
+// ── Cloud mode activation ─────────────────────────────────────────────────────
+function activateCloudMode(key) {
+  cloudApiKey = key.trim();
+  cloudMode = true;
+  modeBadge.textContent = "Groq · Qwen2.5-Coder-32B";
+  setStatus("ready", "Cloud API ready");
+  btnGenerate.disabled = false;
+  btnLabel.textContent = "Generate page";
+  btnCloudSave.classList.add("active");
+  btnCloudSave.textContent = "Active";
+  // Hide compat screen if showing
+  const screen = document.getElementById("compat-screen");
+  if (screen) screen.classList.add("hidden");
+}
+
+function deactivateCloudMode() {
+  cloudApiKey = "";
+  cloudMode = false;
+  modeBadge.textContent = "Qwen2.5-Coder";
+  btnCloudSave.classList.remove("active");
+  btnCloudSave.textContent = "Save";
+  // If browser is incompatible, re-disable button
+  if (!window.__browserCompatible) {
+    btnGenerate.disabled = true;
+    setStatus("error", "No WebGPU");
+    const screen = document.getElementById("compat-screen");
+    if (screen) screen.classList.remove("hidden");
+  } else if (!engine) {
+    setStatus("", "Not loaded");
+    btnLabel.textContent = "Load model";
+  }
+}
+
+// ── Cloud API key controls ────────────────────────────────────────────────────
+btnCloudSave.addEventListener("click", () => {
+  const key = cloudKeyInput.value.trim();
+  if (!key) {
+    deactivateCloudMode();
+    return;
+  }
+  if (!key.startsWith("gsk_")) {
+    showToast("Groq API keys start with gsk_ — please check your key.");
+    return;
+  }
+  activateCloudMode(key);
+});
+
+cloudKeyInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") btnCloudSave.click();
+});
+
+// Compat screen "Continue" button
+btnCompatCloud.addEventListener("click", () => {
+  const key = compatCloudKey.value.trim();
+  if (!key) {
+    showToast("Please enter a Groq API key.");
+    return;
+  }
+  if (!key.startsWith("gsk_")) {
+    showToast("Groq API keys start with gsk_ — please check your key.");
+    return;
+  }
+  // Mirror key into main input too
+  cloudKeyInput.value = key;
+  activateCloudMode(key);
+});
+
+// ── Model init (local WebLLM) ─────────────────────────────────────────────────
 const MODEL_ID = "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC";
 
 async function initEngine() {
@@ -778,7 +1046,7 @@ async function initEngine() {
     });
 
     progressWrap.classList.remove("visible");
-    setStatus("ready", "Model ready");
+    setStatus("ready", "Local model ready");
     btnLabel.textContent = "Generate page";
     btnGenerate.disabled = false;
   } catch (err) {
@@ -793,7 +1061,7 @@ async function initEngine() {
   }
 }
 
-// ── Generate ──────────────────────────────────────────────────────────────────
+// ── System prompt ─────────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You are an expert web developer. When given a description, you output a single, complete, self-contained HTML file.
 
 Rules:
@@ -805,6 +1073,7 @@ Rules:
 - The page must look professional and polished.
 - Start your output with <!DOCTYPE html> and end with </html>.`;
 
+// ── Generate (local WebLLM) ───────────────────────────────────────────────────
 async function generate() {
   const prompt = promptArea.value.trim();
   if (!prompt) { showToast("Please enter a page description first."); return; }
@@ -816,15 +1085,12 @@ async function generate() {
   spinner.classList.add("active");
   btnLabel.textContent = "Generating…";
 
-  // Show code panel, clear it
   codeEmpty.style.display = "none";
   codeOutput.style.display = "block";
   codeOutput.textContent = "";
   codeOutput.classList.add("streaming");
-
   previewEmpty.style.display = "flex";
   previewFrame.style.display = "none";
-
   latestCode = "";
 
   try {
@@ -842,18 +1108,13 @@ async function generate() {
       const delta = chunk.choices[0]?.delta?.content ?? "";
       latestCode += delta;
       codeOutput.textContent = latestCode;
-      // Auto-scroll code panel
       codeOutput.scrollTop = codeOutput.scrollHeight;
     }
 
     codeOutput.classList.remove("streaming");
-
-    // Extract HTML (strip possible markdown fences if model added them)
     const html = extractHTML(latestCode);
     latestCode = html;
     codeOutput.textContent = html;
-
-    // Show preview
     renderPreview(html);
   } catch (err) {
     showToast("Generation error: " + err.message, 6000);
@@ -867,11 +1128,99 @@ async function generate() {
   }
 }
 
+// ── Generate (Groq cloud API) ─────────────────────────────────────────────────
+const GROQ_MODEL = "qwen-2.5-coder-32b-instruct";
+
+async function generateWithCloud() {
+  const prompt = promptArea.value.trim();
+  if (!prompt) { showToast("Please enter a page description first."); return; }
+  if (isGenerating) return;
+
+  isGenerating = true;
+  btnGenerate.disabled = true;
+  spinner.classList.add("active");
+  btnLabel.textContent = "Generating…";
+
+  codeEmpty.style.display = "none";
+  codeOutput.style.display = "block";
+  codeOutput.textContent = "";
+  codeOutput.classList.add("streaming");
+  previewEmpty.style.display = "flex";
+  previewFrame.style.display = "none";
+  latestCode = "";
+
+  try {
+    const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + cloudApiKey,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user",   content: prompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 8192,
+        stream: true,
+      }),
+    });
+
+    if (!resp.ok) {
+      const errBody = await resp.json().catch(() => ({}));
+      const msg = errBody.error?.message || `API error ${resp.status}`;
+      if (resp.status === 401) throw new Error("Invalid API key. Please check your Groq key.");
+      if (resp.status === 429) throw new Error("Rate limit reached. Please wait a moment and try again.");
+      throw new Error(msg);
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop(); // keep incomplete last line
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6).trim();
+        if (data === "[DONE]") continue;
+        try {
+          const json = JSON.parse(data);
+          const delta = json.choices?.[0]?.delta?.content ?? "";
+          latestCode += delta;
+          codeOutput.textContent = latestCode;
+          codeOutput.scrollTop = codeOutput.scrollHeight;
+        } catch { /* skip malformed SSE line */ }
+      }
+    }
+
+    codeOutput.classList.remove("streaming");
+    const html = extractHTML(latestCode);
+    latestCode = html;
+    codeOutput.textContent = html;
+    renderPreview(html);
+  } catch (err) {
+    showToast("Generation error: " + err.message, 6000);
+    console.error(err);
+    codeOutput.classList.remove("streaming");
+  } finally {
+    isGenerating = false;
+    btnGenerate.disabled = false;
+    spinner.classList.remove("active");
+    btnLabel.textContent = "Generate page";
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function extractHTML(raw) {
-  // Strip ```html ... ``` fences if the model wrapped output
   const fenced = raw.match(/```(?:html)?\s*([\s\S]*?)```/i);
   if (fenced) return fenced[1].trim();
-  // Strip any leading/trailing text before <!DOCTYPE
   const doctype = raw.match(/(<!DOCTYPE[\s\S]*<\/html>)/i);
   if (doctype) return doctype[1].trim();
   return raw.trim();
@@ -921,6 +1270,10 @@ document.querySelectorAll(".example-btn").forEach(btn => {
 // ── Generate button ───────────────────────────────────────────────────────────
 btnGenerate.addEventListener("click", async () => {
   if (isLoading) return;
+  if (cloudMode) {
+    generateWithCloud();
+    return;
+  }
   if (!engine) {
     await initEngine();
   } else {
@@ -930,7 +1283,10 @@ btnGenerate.addEventListener("click", async () => {
 
 // Ctrl+Enter shortcut
 promptArea.addEventListener("keydown", e => {
-  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") generate();
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    if (cloudMode) generateWithCloud();
+    else generate();
+  }
 });
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
