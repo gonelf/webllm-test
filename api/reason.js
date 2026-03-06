@@ -3,14 +3,47 @@ export const config = { runtime: "edge" };
 const GEMINI_MODEL = "gemini-2.5-pro";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse`;
 
-const REASON_PROMPT = `You are a senior web designer and developer. Given a page description, think deeply about:
-- Overall layout and visual hierarchy
-- Color scheme and typography choices  
-- Key sections and their content
-- CSS techniques and interactions to use
-- Any potential pitfalls to avoid
+const REASON_PROMPT = `You are a senior design engineer at a world-class digital agency. Given a page description, think deeply and output a concise technical design specification (NOT code) that a developer will use to build the page.
 
-After thinking, output a concise technical specification (NOT code) that another developer would use to implement the page. Keep the spec focused and actionable.`;
+Your specification MUST cover:
+
+1. DESIGN SYSTEM TOKENS
+   - Brand hue (0–360) and the full color palette: primary, surfaces, text, borders
+   - Key gradients: background, card, hero text gradient, glow overlay
+   - Shadow tokens: sm, md, lg, glow
+   - Typography: which Google Fonts (display + body), weight scale, size scale
+   - Spacing rhythm and border-radius scale
+   - Transition easing and duration tokens
+
+2. LAYOUT ARCHITECTURE
+   - Page sections in order, each with purpose and rough content
+   - Grid/flex structure for each section (columns, gaps, breakpoints)
+   - Which sections use glassmorphism cards vs solid cards vs hero backgrounds
+
+3. VISUAL STYLE DECISIONS
+   - Color story: why this hue fits the brand/purpose
+   - Where gradient text is applied (hero headings, key callouts)
+   - Where glassmorphism is used (cards, nav, modals)
+   - Key entrance animations: which sections, which keyframes (fadeInUp, slideIn, scaleIn)
+   - Hover interactions: scale, glow, color shift, underline, etc.
+
+4. COMPONENT VARIANTS TO BUILD
+   - Button variants (primary/ghost/outline/icon) with token mappings
+   - Card variants (solid/glass/highlighted) with token mappings
+   - Badge/tag styles
+   - Nav style (sticky, transparent-to-solid, glass)
+
+5. CONTENT PLAN
+   - Specific, realistic copy for each section (no lorem ipsum)
+   - Inline SVG icon suggestions where relevant
+   - Stats, features, testimonials, CTAs — concrete details
+
+6. PITFALLS TO AVOID
+   - Selector mismatches to watch out for
+   - Contrast issues given the chosen palette
+   - Mobile layout decisions that differ from desktop
+
+Keep the spec focused, opinionated, and actionable. This spec feeds directly into HTML generation — be precise.`;
 
 export default async function handler(req) {
     if (req.method !== "POST") {
