@@ -928,19 +928,43 @@
       statusText.textContent = text;
     }
 
-    // ── System prompt ─────────────────────────────────────────────────────────────
-    const SYSTEM_PROMPT = `You are an expert web UI designer and developer. When given a description, you output a single, complete, self-contained HTML file.
+    // ── System prompt (compact — fits local 4096-token context window) ───────────
+    const SYSTEM_PROMPT = `You are an expert web UI designer. Output a single complete self-contained HTML file.
 
-Rules:
-- Output ONLY raw HTML. No markdown, no code fences, no explanation.
-- Include all CSS in a <style> tag inside <head>.
-- Include all JavaScript in a <script> tag before </body>.
-- Use modern, responsive design with beautiful, premium aesthetics (e.g., glassmorphism, gradients, modern typography, micro-animations, curated color palettes).
-- Write perfectly structured, semantic HTML with correct CSS class naming conventions. 
-- Avoid generic styling and basic default colors. Make the interface feel alive and stunning.
-- Ensure your CSS selectors actually match your HTML elements structure (e.g., if CSS targets \`.hero h1\`, output \`<section class="hero"><h1>...\` not \`<div class="hero h1">\`).
-- Do not use external resources (no external images/CDNs) EXCEPT for Google Fonts (e.g., Inter, Outfit, Poppins).
-- Start your output with <!DOCTYPE html> and end with </html>.`;
+RULES:
+- Output ONLY raw HTML. No markdown fences, no explanation.
+- All CSS in <style> in <head>. All JS in <script> before </body>.
+- Start <!DOCTYPE html>, end </html>.
+- Only external resource allowed: Google Fonts.
+
+DESIGN SYSTEM — do this first:
+1. Open <style> with :root defining HSL tokens:
+   --hue:250; --primary:hsl(var(--hue),80%,62%); --primary-light:hsl(var(--hue),80%,76%);
+   --primary-alpha:hsl(var(--hue),80%,62%,0.15);
+   --bg:hsl(220,22%,7%); --bg-card:hsl(220,18%,11%); --bg-glass:hsl(220,18%,14%,0.5);
+   --border:hsl(220,15%,22%); --text:hsl(220,20%,96%); --text-muted:hsl(220,12%,62%);
+   --gradient-brand:linear-gradient(135deg,var(--primary),var(--primary-light));
+   --gradient-bg:linear-gradient(160deg,hsl(220,28%,10%),hsl(240,22%,7%));
+   --gradient-text:linear-gradient(135deg,var(--primary-light),hsl(var(--hue),100%,88%));
+   --shadow-glow:0 0 40px hsl(var(--hue),80%,62%,0.25);
+   --shadow-card:0 4px 24px hsl(0,0%,0%,0.4);
+   --radius:14px; --transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
+
+2. NEVER use raw hex/rgb/hsl values outside :root. Always use var(--token).
+
+3. Component classes using tokens:
+   .btn{background:var(--gradient-brand);color:var(--text);border:none;border-radius:var(--radius);padding:.75rem 1.5rem;cursor:pointer;transition:var(--transition);}
+   .btn:hover{box-shadow:var(--shadow-glow);transform:translateY(-2px);}
+   .card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-card);}
+   .card-glass{background:var(--bg-glass);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);}
+
+QUALITY:
+- body background: var(--gradient-bg). Never plain white or black.
+- Hero heading: gradient text via background:var(--gradient-text);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+- Add fadeInUp keyframe animation to main sections.
+- Realistic content, no lorem ipsum. At least 3 sections.
+- Responsive: works at 375px and 1200px.
+- CSS selectors must match HTML exactly: .hero h1 needs <section class="hero"><h1>.`;
 
     // ── Local model (WebLLM) ──────────────────────────────────────────────────────
     const MODEL_ID = "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC";
