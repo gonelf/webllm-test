@@ -1,16 +1,19 @@
 export const config = { runtime: "edge" };
 
-const GEMINI_MODEL = "gemini-2.5-pro";
+const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse`;
 
-const REASON_PROMPT = `You are a senior web designer and developer. Given a page description, think deeply about:
-- Overall layout and visual hierarchy
-- Color scheme and typography choices  
-- Key sections and their content
-- CSS techniques and interactions to use
-- Any potential pitfalls to avoid
-
-After thinking, output a concise technical specification (NOT code) that another developer would use to implement the page. Keep the spec focused and actionable.`;
+const ARCHITECT_PROMPT = `You are a Lead Software Architect. Your goal is to plan a web application based on user requirements.
+CRITICAL RULES:
+Respond ONLY in TOON format. No prose, no conversational filler.
+Define the exact package.json dependencies and a list of all required file paths.
+For each file, provide a brief "Logic Summary" instead of the full code.
+Use the following TOON Schema:
+project: [name]
+deps: [comma-separated packages]
+files{path, type, logic}:
+src/App.tsx, component, "Main entry with a sidebar and auth check"
+src/hooks/useAuth.ts, hook, "Handles Firebase login and state"`;
 
 export default async function handler(req) {
     if (req.method !== "POST") {
@@ -53,11 +56,11 @@ export default async function handler(req) {
             contents: [
                 {
                     role: "user",
-                    parts: [{ text: REASON_PROMPT + "\n\nPage description: " + prompt.trim() }],
+                    parts: [{ text: ARCHITECT_PROMPT + "\n\nUser requirements: " + prompt.trim() }],
                 },
             ],
             generationConfig: {
-                temperature: 0.7,
+                temperature: 0.2, // Low temperature for consistent blueprint format
                 maxOutputTokens: 8192
             },
         }),
@@ -72,9 +75,6 @@ export default async function handler(req) {
         });
     }
 
-    // Transform Gemini's SSE stream into our typed SSE format:
-    // data: {"t":"think","text":"..."} — for thought parts
-    // data: {"t":"plan","text":"..."}  — for answer parts
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
@@ -100,8 +100,7 @@ export default async function handler(req) {
                             const parts = json.candidates?.[0]?.content?.parts ?? [];
                             for (const part of parts) {
                                 if (!part.text) continue;
-                                const type = part.thought ? "think" : "plan";
-                                const payload = JSON.stringify({ t: type, text: part.text });
+                                const payload = JSON.stringify({ text: part.text });
                                 controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
                             }
                         } catch { /* skip malformed chunk */ }

@@ -2,1334 +2,439 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Page Creator</title>
+  <meta charset="UTF-8">
+  <title>TOON WebLLM Architect</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
   <style>
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface2: #22253a;
-      --border: #2e3148;
-      --accent: #6c63ff;
-      --accent-hover: #8a83ff;
-      --text: #e2e4f0;
-      --text-muted: #7b80a0;
-      --green: #4ade80;
-      --red: #f87171;
-      --yellow: #fbbf24;
-      --radius: 8px;
-      --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
-    }
-
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+      margin: 0;
+      background: #0f1117;
+      color: #e2e4f0;
+      font-family: system-ui, sans-serif;
     }
 
-    /* ── Header ── */
-    header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 14px 20px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-
-    header .logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 700;
-      font-size: 15px;
-      letter-spacing: -0.2px;
-    }
-
-    header .logo svg {
-      width: 24px;
-      height: 24px;
-    }
-
-    header .badge {
-      font-size: 11px;
-      padding: 3px 9px;
-      border-radius: 99px;
-      background: var(--badge-bg, rgba(108, 99, 255, 0.18));
-      color: var(--badge-color, var(--accent));
-      border: 1px solid var(--badge-border, rgba(108, 99, 255, 0.3));
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    header .badge.local {
-      --badge-bg: rgba(74, 222, 128, 0.14);
-      --badge-color: var(--green);
-      --badge-border: rgba(74, 222, 128, 0.3);
-    }
-
-    #model-status {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .file-item {
+      padding: 4px 8px;
+      font-family: monospace;
       font-size: 13px;
-      color: var(--text-muted);
-    }
-
-    #status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--text-muted);
-      flex-shrink: 0;
-    }
-
-    #status-dot.ready {
-      background: var(--green);
-      box-shadow: 0 0 6px var(--green);
-    }
-
-    #status-dot.loading {
-      background: var(--yellow);
-      animation: pulse 1s infinite;
-    }
-
-    #status-dot.error {
-      background: var(--red);
-    }
-
-    @keyframes pulse {
-
-      0%,
-      100% {
-        opacity: 1;
-      }
-
-      50% {
-        opacity: 0.3;
-      }
-    }
-
-    /* ── Main layout ── */
-    main {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 340px 1fr;
-      overflow: hidden;
-    }
-
-    /* ── Left panel: prompt ── */
-    .panel-left {
-      display: flex;
-      flex-direction: column;
-      border-right: 1px solid var(--border);
-      background: var(--surface);
-    }
-
-    .panel-title {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--text-muted);
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    #prompt-area {
-      flex: 1;
-      background: transparent;
-      border: none;
-      outline: none;
-      resize: none;
-      font-size: 14px;
-      line-height: 1.6;
-      color: var(--text);
-      padding: 16px;
-      font-family: inherit;
-    }
-
-    #prompt-area::placeholder {
-      color: var(--text-muted);
-    }
-
-    .examples {
-      padding: 12px 16px;
-      border-top: 1px solid var(--border);
-    }
-
-    .examples p {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.7px;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
-
-    .example-btn {
-      display: block;
-      width: 100%;
-      text-align: left;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      color: var(--text);
-      font-size: 12px;
-      padding: 7px 10px;
-      margin-bottom: 6px;
+      color: #7b80a0;
       cursor: pointer;
-      transition: border-color 0.15s, background 0.15s;
     }
 
-    .example-btn:hover {
-      border-color: var(--accent);
-      background: rgba(108, 99, 255, 0.08);
-    }
-
-
-    /* ── Thinking stream bubble ── */
-    .thinking-section {
-      display: none;
-      flex-direction: column;
-      margin: 0 12px 4px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--surface2);
-      overflow: hidden;
-      flex-shrink: 0;
-      max-height: 180px;
-    }
-
-    .thinking-section.visible {
-      display: flex;
-    }
-
-    .thinking-header {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 10px;
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--text-muted);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-
-    .thinking-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--accent);
-      flex-shrink: 0;
-    }
-
-    .thinking-dot.pulse {
-      animation: pulse 1s infinite;
-    }
-
-    #thinking-text {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px 10px;
-      font-family: var(--font-mono);
-      font-size: 11px;
-      line-height: 1.6;
-      color: var(--text-muted);
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .thinking-footer {
-      font-size: 10px;
-      color: var(--text-muted);
-      padding: 4px 10px;
-      border-top: 1px solid var(--border);
-      flex-shrink: 0;
-      display: none;
-    }
-
-    .thinking-footer.visible {
-      display: block;
-    }
-
-
-    .btn-generate {
-      margin: 12px 16px 16px;
-      padding: 12px;
-      background: var(--accent);
+    .file-item.active {
+      background: #22253a;
       color: #fff;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.15s, opacity 0.15s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
+      border-radius: 4px;
     }
 
-    .btn-generate:hover:not(:disabled) {
-      background: var(--accent-hover);
-    }
-
-    .btn-generate:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-
-    /* ── Progress bar ── */
-    #progress-wrap {
-      padding: 0 16px 12px;
-      display: none;
-    }
-
-    #progress-wrap.visible {
-      display: block;
-    }
-
-    #progress-bar-bg {
-      height: 4px;
-      background: var(--border);
-      border-radius: 99px;
-      overflow: hidden;
-    }
-
-    #progress-bar {
-      height: 100%;
-      background: linear-gradient(90deg, var(--accent), var(--accent-hover));
-      border-radius: 99px;
-      width: 0%;
-      transition: width 0.3s;
-    }
-
-    #progress-label {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 5px;
-      text-align: center;
-    }
-
-    /* ── Combined output panel (tabbed) ── */
-    .panel-output {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-
-    .tab-bar {
-      display: flex;
-      align-items: center;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-      padding: 0 8px;
-      gap: 2px;
-    }
-
-    .tab-btn {
-      background: none;
-      border: none;
-      border-bottom: 2px solid transparent;
-      color: var(--text-muted);
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.7px;
-      padding: 10px 12px 8px;
-      cursor: pointer;
-      transition: color 0.15s, border-color 0.15s;
-    }
-
-    .tab-btn:hover {
-      color: var(--text);
-    }
-
-    .tab-btn.active {
-      color: var(--accent);
-      border-bottom-color: var(--accent);
-    }
-
-    .tab-actions {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .btn-copy,
-    .btn-download,
-    .btn-refresh {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: var(--radius);
-      font-size: 12px;
-      padding: 4px 10px;
-      cursor: pointer;
-      transition: border-color 0.15s;
-    }
-
-    .btn-copy:hover,
-    .btn-download:hover,
-    .btn-refresh:hover {
-      border-color: var(--accent);
-    }
-
-    .tab-panel {
-      flex: 1;
-      display: none;
-      flex-direction: column;
-      overflow: hidden;
-      min-height: 0;
-    }
-
-    .tab-panel.active {
-      display: flex;
-    }
-
-    #code-output {
-      flex: 1;
-      overflow: auto;
-      margin: 0;
-      padding: 16px;
-      font-family: var(--font-mono);
-      font-size: 13px;
-      line-height: 1.7;
-      color: #a9b1d6;
-      white-space: pre;
-      background: var(--bg);
-    }
-
-    #code-output.streaming {
-      color: var(--text);
-    }
-
-    /* simple syntax colours for generated HTML */
-    .tok-tag {
-      color: #7aa2f7;
-    }
-
-    .tok-attr {
-      color: #e0af68;
-    }
-
-    .tok-str {
-      color: #9ece6a;
-    }
-
-    .tok-cmt {
-      color: #565f89;
-      font-style: italic;
-    }
-
-    #preview-frame {
-      flex: 1;
-      border: none;
-      background: #fff;
-    }
-
-    /* ── Empty states ── */
-    .empty-state {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      color: var(--text-muted);
-      font-size: 14px;
-      padding: 32px;
-      text-align: center;
-    }
-
-    .empty-state svg {
-      opacity: 0.3;
-    }
-
-    /* ── Spinner ── */
-    .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      display: none;
-    }
-
-    .spinner.active {
-      display: block;
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    /* ── Error toast ── */
-    #toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(80px);
-      background: #2d1a1a;
-      border: 1px solid var(--red);
-      color: var(--red);
-      padding: 10px 18px;
-      border-radius: var(--radius);
-      font-size: 13px;
-      transition: transform 0.3s;
-      z-index: 999;
-      max-width: 500px;
-      text-align: center;
-    }
-
-    #toast.show {
-      transform: translateX(-50%) translateY(0);
-    }
-
-    /* ── Compatibility screen ── */
-    #compat-screen {
-      position: fixed;
-      inset: 0;
-      background: var(--bg);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      z-index: 9999;
-      padding: 40px;
-      text-align: center;
-      overflow-y: auto;
-    }
-
-    #compat-screen.hidden {
-      display: none;
-    }
-
-    #compat-screen h2 {
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--text);
-      margin: 0;
-    }
-
-    #compat-screen>p {
-      color: var(--text-muted);
-      font-size: 14px;
-      max-width: 480px;
-      line-height: 1.6;
-      margin: 0;
-    }
-
-    .compat-checks {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px 24px;
-      min-width: 300px;
-    }
-
-    .compat-check {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-    }
-
-    .compat-check .check-icon {
-      font-size: 15px;
-      flex-shrink: 0;
-    }
-
-    .compat-check.pass {
-      color: var(--green);
-    }
-
-    .compat-check.fail {
-      color: var(--red);
-    }
-
-    .compat-check.warn {
-      color: var(--yellow);
-    }
-
-    .compat-browsers {
-      display: flex;
-      gap: 16px;
-      margin-top: 4px;
-    }
-
-    .compat-browser-badge {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 8px 16px;
-      font-size: 13px;
-      color: var(--text-muted);
+    /* terminal overrides */
+    .terminal {
+      padding: 8px;
     }
   </style>
 </head>
 
-<body>
-
-  <header>
-    <div class="logo">
-      <!-- code icon -->
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
-        stroke-linejoin="round">
-        <polyline points="16 18 22 12 16 6" />
-        <polyline points="8 6 2 12 8 18" />
-      </svg>
-      AI Page Creator
+<body class="h-screen w-screen flex flex-col overflow-hidden">
+  <!-- Header -->
+  <header class="h-14 border-b border-gray-800 bg-gray-900 flex items-center px-4 justify-between shrink-0">
+    <div class="font-bold flex items-center gap-2">
+      <span>🚀 TOON Builder</span>
     </div>
-    <span class="badge cloud" id="mode-badge">☁ Groq API</span>
-
-    <div id="model-status">
-      <div id="status-dot"></div>
-      <span id="status-text">Not loaded</span>
+    <div id="status-bar" class="text-sm text-gray-400 flex items-center gap-2">
+      <span id="status-dot" class="w-2 h-2 rounded-full bg-red-500"></span>
+      <span id="status-text">Booting WebContainer & Model...</span>
     </div>
   </header>
 
-  <div id="compat-screen" class="hidden">
-    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="1.6"
-      stroke-linecap="round" stroke-linejoin="round">
-      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-      <line x1="12" y1="9" x2="12" y2="13" />
-      <line x1="12" y1="17" x2="12.01" y2="17" />
-    </svg>
-    <h2>WebGPU Not Available — Using Cloud AI</h2>
-    <p>Your browser doesn't support WebGPU, so we're automatically falling back to our cloud AI. Generation will work
-      fine — no action needed.</p>
-
-    <div class="compat-checks">
-      <div class="compat-check" id="check-webgpu">
-        <span class="check-icon">…</span>
-        <span>WebGPU (required for local model)</span>
+  <main class="flex-1 flex min-h-0">
+    <!-- Left Sidebar -->
+    <aside class="w-80 border-r border-gray-800 bg-gray-900 flex flex-col">
+      <div class="p-4 border-b border-gray-800 flex flex-col gap-3">
+        <label class="text-xs font-semibold uppercase tracking-wider text-gray-500">User Intent</label>
+        <textarea id="prompt"
+          class="w-full h-32 bg-gray-800 rounded p-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          placeholder="e.g. A fitness tracker with a dashboard..."></textarea>
+        <button id="btn-gen"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded transition-colors disabled:opacity-50"
+          disabled>Generate Blueprint & Build</button>
       </div>
-      <div class="compat-check" id="check-wasm">
-        <span class="check-icon">…</span>
-        <span>WebAssembly</span>
-      </div>
-      <div class="compat-check" id="check-isolation">
-        <span class="check-icon">…</span>
-        <span>Cross-origin isolation (SharedArrayBuffer)</span>
-      </div>
-    </div>
 
-    <div id="compat-advice"></div>
-
-    <button class="btn-generate" id="btn-compat-continue" style="max-width:320px;margin-top:8px">
-      Continue with Cloud AI ☁
-    </button>
-  </div>
-
-  <main>
-    <!-- Left: prompt panel -->
-    <div class="panel-left">
-      <div class="panel-title">Describe your page</div>
-
-      <textarea id="prompt-area"
-        placeholder="E.g. A dark-themed landing page for a SaaS product called &quot;Orbit&quot; with a hero section, feature cards, and a pricing table."></textarea>
-
-      <div class="examples">
-        <p>Quick examples</p>
-        <button class="example-btn"
-          data-prompt="A beautiful personal portfolio page with a hero section, about me, skills grid, and contact form. Use a clean minimal design with blue accents.">Personal
-          portfolio</button>
-        <button class="example-btn"
-          data-prompt="A responsive product landing page for a mobile app called &apos;Zenly&apos;. Include a hero, features list, testimonials, and a call-to-action. Use gradient purple/pink colors.">Product
-          landing page</button>
-        <button class="example-btn"
-          data-prompt="A simple task manager web app with a sidebar for categories, a main area to list tasks with checkboxes, and a form to add new tasks. Dark theme.">Task
-          manager UI</button>
-        <button class="example-btn"
-          data-prompt="A restaurant website with a full-screen hero image, menu section with food cards, about section, and a reservation form. Use warm earthy colors.">Restaurant
-          website</button>
-      </div>
-      <!-- Live thinking stream -->
-      <div class="thinking-section" id="thinking-section">
-        <div class="thinking-header">
-          <div class="thinking-dot" id="thinking-dot"></div>
-          <span id="thinking-label">Generating…</span>
+      <div class="p-4 flex flex-col min-h-0 flex-1">
+        <label class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Generated Files</label>
+        <div id="file-explorer" class="flex-1 overflow-y-auto w-full flex flex-col gap-1">
+          <div class="text-xs text-gray-600">No files yet.</div>
         </div>
-        <div id="thinking-text"></div>
-        <div class="thinking-footer" id="thinking-footer"></div>
       </div>
+    </aside>
 
-      <div id="progress-wrap">
-        <div id="progress-bar-bg">
-          <div id="progress-bar"></div>
-        </div>
-        <div id="progress-label">Loading model…</div>
-      </div>
+    <!-- Main Content -->
+    <section class="flex-1 flex flex-col min-w-0">
+      <header class="h-14 border-b border-gray-800 bg-gray-900 flex items-center px-4 gap-3 shrink-0">
+        <input id="update-prompt"
+          class="flex-1 bg-gray-800 border-none rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 text-white"
+          placeholder="Surgical Update: Make the 'Delete' button red" />
+        <button id="btn-update"
+          class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-1.5 rounded transition-colors disabled:opacity-50"
+          disabled>Update (Aider)</button>
+      </header>
 
-      <button class="btn-generate" id="btn-generate" type="button">
-        <div class="spinner" id="gen-spinner"></div>
-        <span id="btn-label">Generate page</span>
-      </button>
-    </div>
-
-    <!-- Combined output panel (tabbed) -->
-    <div class="panel-output">
-      <div class="tab-bar">
-        <button class="tab-btn" id="tab-btn-preview" onclick="switchTab('preview')">Preview</button>
-        <button class="tab-btn" id="tab-btn-html" onclick="switchTab('html')">HTML</button>
-        <div class="tab-actions" id="tab-actions-html" style="display:none">
-          <button class="btn-copy" id="btn-copy" onclick="copyCode()">Copy</button>
-          <button class="btn-download" id="btn-download" onclick="downloadCode()">Download</button>
-        </div>
-        <div class="tab-actions" id="tab-actions-preview">
-          <button class="btn-refresh" onclick="refreshPreview()">Refresh</button>
+      <div class="flex-1 relative bg-white">
+        <iframe id="preview-iframe" class="w-full h-full border-0 absolute inset-0 hidden"
+          sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
+        <div id="preview-overlay" class="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-950">
+          Preview will load here once Vite starts...
         </div>
       </div>
 
-      <!-- Preview tab -->
-      <div class="tab-panel" id="tab-panel-preview">
-        <div id="preview-empty" class="empty-state">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-            <line x1="8" y1="21" x2="16" y2="21" />
-            <line x1="12" y1="17" x2="12" y2="21" />
-          </svg>
-          <span>Preview will appear here after generation</span>
+      <!-- Terminal -->
+      <div class="h-64 border-t border-gray-800 bg-[#0f1117] flex flex-col shrink-0">
+        <div
+          class="h-8 bg-gray-900 border-b border-gray-800 px-3 flex items-center text-xs text-gray-500 font-mono tracking-wide">
+          WebContainer Terminal
         </div>
-        <iframe id="preview-frame" style="display:none" sandbox="allow-scripts allow-same-origin"></iframe>
+        <div id="terminal-container" class="flex-1 overflow-hidden"></div>
       </div>
-
-      <!-- HTML tab -->
-      <div class="tab-panel" id="tab-panel-html">
-        <div id="code-empty" class="empty-state">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="16 18 22 12 16 6" />
-            <polyline points="8 6 2 12 8 18" />
-          </svg>
-          <span>Generated code will appear here</span>
-        </div>
-        <pre id="code-output" style="display:none"></pre>
-      </div>
-    </div>
+    </section>
   </main>
-
-  <div id="toast"></div>
-
-  <script>
-    // Basic browser sanity check (just in case).
-    (function () {
-      var checks = {
-        webgpu: typeof navigator !== 'undefined' && !!navigator.gpu,
-        wasm: typeof WebAssembly !== 'undefined',
-        isolation: typeof crossOriginIsolated !== 'undefined' && crossOriginIsolated,
-      };
-
-      var compatible = checks.webgpu && checks.wasm;
-
-      // ── Browser detection ───────────────────────────────────────────────────────
-      function detectBrowser() {
-        var ua = navigator.userAgent;
-        if (/Edg\//.test(ua)) return 'edge';
-        if (/OPR\/|Opera/.test(ua)) return 'opera';
-        if (/SamsungBrowser/.test(ua)) return 'samsung';
-        if (/Firefox\//.test(ua)) return 'firefox';
-        if (/Safari\//.test(ua) && !/Chrome/.test(ua)) return 'safari';
-        if (/Chrome\//.test(ua)) return 'chrome'; // may be Brave — checked async
-        return 'unknown';
-      }
-
-      var ADVICE = {
-        firefox: {
-          label: 'Firefox',
-          html: '<p>Firefox does not yet support WebGPU. Please switch to <strong style="color:var(--text)">Chrome 113+</strong> or <strong style="color:var(--text)">Edge 113+</strong>, or use the Groq cloud API below.</p>'
-            + '<div class="compat-browsers"><div class="compat-browser-badge">Chrome 113+</div><div class="compat-browser-badge">Edge 113+</div><div class="compat-browser-badge">Brave</div></div>',
-        },
-        safari: {
-          label: 'Safari / iPhone',
-          html: '<p>Safari\'s WebGPU support is incomplete. Please switch to <strong style="color:var(--text)">Chrome 113+</strong> or use the Groq cloud API below.</p>'
-            + '<div class="compat-browsers"><div class="compat-browser-badge">Chrome 113+</div><div class="compat-browser-badge">Edge 113+</div><div class="compat-browser-badge">Brave</div></div>',
-        },
-        opera: {
-          label: 'Opera',
-          html: '<p>Opera is not officially supported. Please use <strong style="color:var(--text)">Chrome 113+</strong> or <strong style="color:var(--text)">Edge 113+</strong>, or use the Groq cloud API below.</p>'
-            + '<div class="compat-browsers"><div class="compat-browser-badge">Chrome 113+</div><div class="compat-browser-badge">Edge 113+</div></div>',
-        },
-        samsung: {
-          label: 'Samsung Internet',
-          html: '<p>Samsung Internet does not support WebGPU. Please use <strong style="color:var(--text)">Chrome 113+</strong> on a desktop device, or use the Groq cloud API below.</p>'
-            + '<div class="compat-browsers"><div class="compat-browser-badge">Chrome 113+</div><div class="compat-browser-badge">Edge 113+</div></div>',
-        },
-        brave: {
-          label: 'Brave',
-          html: '<p>Brave blocks WebGPU by default to prevent fingerprinting. Enable it one of two ways:</p>'
-            + '<p style="font-size:12px;margin-top:4px">'
-            + '<strong style="color:var(--text)">Option 1 — Flags (permanent):</strong> go to <code style="color:var(--accent)">brave://flags/#enable-unsafe-webgpu</code>, set it to <em>Enabled</em>, then relaunch.<br><br>'
-            + '<strong style="color:var(--text)">Option 2 — Shields (this site only):</strong> click the Brave lion icon in the address bar → set <em>Fingerprinting blocking</em> to <em>Allow all fingerprinting</em>.'
-            + '</p>',
-        },
-        edge: {
-          label: 'Edge',
-          html: '<p>WebGPU may be disabled. Enable it at <code style="color:var(--accent)">edge://flags/#enable-unsafe-webgpu</code>, then relaunch.</p>',
-        },
-        chrome: {
-          label: 'Chrome',
-          html: '<p>WebGPU requires hardware acceleration. Go to <code style="color:var(--accent)">chrome://settings/system</code>, turn on <em>Use hardware acceleration when available</em>, then relaunch Chrome.</p>'
-            + '<p style="font-size:12px;margin-top:8px">If hardware acceleration is already on, your GPU or driver may not support WebGPU — try updating your GPU drivers.</p>',
-        },
-        unknown: {
-          label: 'your browser',
-          html: '<p>Please switch to a supported browser:</p>'
-            + '<div class="compat-browsers"><div class="compat-browser-badge">Chrome 113+</div><div class="compat-browser-badge">Edge 113+</div><div class="compat-browser-badge">Brave</div></div>',
-        },
-      };
-
-      function renderAdvice(key) {
-        var advice = ADVICE[key] || ADVICE.unknown;
-        var el = document.getElementById('compat-advice');
-        if (!el) return;
-        el.innerHTML =
-          '<p style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Detected browser: <strong style="color:var(--text)">' + advice.label + '</strong></p>'
-          + advice.html;
-      }
-
-      // ── Check rendering ─────────────────────────────────────────────────────────
-      function applyCheck(id, ok, warnOnly) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        var icon = el.querySelector('.check-icon');
-        if (ok) {
-          el.classList.add('pass');
-          if (icon) icon.textContent = '✓';
-        } else if (warnOnly) {
-          el.classList.add('warn');
-          if (icon) icon.textContent = '⚠';
-        } else {
-          el.classList.add('fail');
-          if (icon) icon.textContent = '✗';
-        }
-      }
-
-      function showCompatScreen(browserKey) {
-        var screen = document.getElementById('compat-screen');
-        if (screen) screen.classList.remove('hidden');
-        applyCheck('check-webgpu', checks.webgpu, false);
-        applyCheck('check-wasm', checks.wasm, false);
-        applyCheck('check-isolation', checks.isolation, true);
-        renderAdvice(browserKey);
-      }
-
-      // Expose result for the module script
-      window.__browserCompatible = compatible;
-      window.__browserChecks = checks;
-
-      if (!compatible) {
-        var browserKey = detectBrowser();
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', function () {
-            showCompatScreen(browserKey);
-            var btn = document.getElementById('btn-generate');
-            if (btn) btn.disabled = true;
-          });
-        } else {
-          showCompatScreen(browserKey);
-          var btn = document.getElementById('btn-generate');
-          if (btn) btn.disabled = true;
-        }
-
-        // Async Brave detection: UA looks identical to Chrome
-        if (browserKey === 'chrome' && navigator.brave && navigator.brave.isBrave) {
-          navigator.brave.isBrave().then(function (isBrave) {
-            if (isBrave) renderAdvice('brave');
-          });
-        }
-      }
-    }());
-  </script>
 
   <script type="module">
     import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+    import { WebContainer } from "https://esm.sh/@webcontainer/api";
 
-    // ── DOM refs ──────────────────────────────────────────────────────────────────
+    const terminal = new window.Terminal({ convertEol: true, cursorBlink: true, fontSize: 13, theme: { background: '#0f1117' } });
+    terminal.open(document.getElementById('terminal-container'));
+
+    let webcontainerInstance;
+    let engine;
+    let fileMap = new Map(); // Stores generated code { path -> content }
+
     const statusDot = document.getElementById("status-dot");
     const statusText = document.getElementById("status-text");
-    const modeBadge = document.getElementById("mode-badge");
-    const progressWrap = document.getElementById("progress-wrap");
-    const progressBar = document.getElementById("progress-bar");
-    const progressLabel = document.getElementById("progress-label");
-    const btnGenerate = document.getElementById("btn-generate");
-    const btnLabel = document.getElementById("btn-label");
-    const spinner = document.getElementById("gen-spinner");
-    const promptArea = document.getElementById("prompt-area");
-    const codeEmpty = document.getElementById("code-empty");
-    const codeOutput = document.getElementById("code-output");
-    const previewEmpty = document.getElementById("preview-empty");
-    const previewFrame = document.getElementById("preview-frame");
-    const toast = document.getElementById("toast");
+    const btnGen = document.getElementById("btn-gen");
+    const btnUpdate = document.getElementById("btn-update");
+    const promptEl = document.getElementById("prompt");
+    const updatePromptEl = document.getElementById("update-prompt");
+    const explorerEl = document.getElementById("file-explorer");
+    const iframe = document.getElementById("preview-iframe");
+    const previewOverlay = document.getElementById("preview-overlay");
 
-    // ── State ─────────────────────────────────────────────────────────────────────
-    let engine = null;
-    let isGenerating = false;
-    let isLoading = false;
-    let latestCode = "";
-    let cloudMode = !window.__browserCompatible; // true when WebGPU unavailable
-
-    // ── Badge helpers ─────────────────────────────────────────────────────────────
-    function setBadgeLocal() {
-      modeBadge.className = "badge local";
-      modeBadge.textContent = "⚡ Local";
-    }
-    function setBadgeCloud() {
-      modeBadge.className = "badge";
-      modeBadge.textContent = "☁ Groq API";
-    }
-    function setBadgeHybrid(phase) {
-      modeBadge.className = "badge local";
-      if (phase === "thinking") modeBadge.textContent = "✦ Thinking…";
-      else if (phase === "coding") modeBadge.textContent = "⚡ Coding…";
-      else modeBadge.textContent = "⚡ Hybrid";
+    function setStatus(msg, colorClass) {
+      statusText.textContent = msg;
+      statusDot.className = `w-2 h-2 rounded-full ${colorClass}`;
     }
 
-    // ── Toast / Status helpers ────────────────────────────────────────────────────
-    function showToast(msg, duration = 4000) {
-      toast.textContent = msg;
-      toast.classList.add("show");
-      setTimeout(() => toast.classList.remove("show"), duration);
-    }
-    function setStatus(state, text) {
-      statusDot.className = state;
-      statusText.textContent = text;
+    function termLog(msg) {
+      terminal.write(`\r\n\x1b[36m[System]\x1b[0m ${msg}\r\n`);
     }
 
-    // ── System prompt ─────────────────────────────────────────────────────────────
-    const SYSTEM_PROMPT = `You are an expert web UI designer and developer. When given a description, you output a single, complete, self-contained HTML file.
+    async function boot() {
+      try {
+        termLog("Booting WebContainer...");
+        webcontainerInstance = await WebContainer.boot();
+        termLog("WebContainer booted.");
 
-Rules:
-- Output ONLY raw HTML. No markdown, no code fences, no explanation.
-- Include all CSS in a <style> tag inside <head>.
-- Include all JavaScript in a <script> tag before </body>.
-- Use modern, responsive design with beautiful, premium aesthetics (e.g., glassmorphism, gradients, modern typography, micro-animations, curated color palettes).
-- Write perfectly structured, semantic HTML with correct CSS class naming conventions. 
-- Avoid generic styling and basic default colors. Make the interface feel alive and stunning.
-- Ensure your CSS selectors actually match your HTML elements structure (e.g., if CSS targets \`.hero h1\`, output \`<section class="hero"><h1>...\` not \`<div class="hero h1">\`).
-- Do not use external resources (no external images/CDNs) EXCEPT for Google Fonts (e.g., Inter, Outfit, Poppins).
-- Start your output with <!DOCTYPE html> and end with </html>.`;
+        webcontainerInstance.on('server-ready', (port, url) => {
+          termLog(`Server ready at ${url}`);
+          iframe.src = url;
+          iframe.classList.remove("hidden");
+          previewOverlay.classList.add("hidden");
+        });
 
-    // ── Local model (WebLLM) ──────────────────────────────────────────────────────
-    const MODEL_ID = "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC";
+        termLog("Loading Local Weights (WebLLM)...");
+        const PREFERRED_MODEL_ID = "Qwen3-Coder-Next-7B";
+        const FALLBACK_MODEL_ID = "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC";
+        try {
+          // Check if preferred model is supported in standard webllm
+          const hasModel = webllm.prebuiltAppConfig.model_list.some(m => m.model_id === PREFERRED_MODEL_ID);
+          const initProgressCallback = (report) => {
+            setStatus(`Loading Model: ${Math.round(report.progress * 100)}%`, "bg-yellow-500");
+          };
+          if (hasModel) {
+            engine = await webllm.CreateMLCEngine(PREFERRED_MODEL_ID, { initProgressCallback });
+          } else {
+            termLog(`Model ${PREFERRED_MODEL_ID} not found in WebLLM standard. Falling back to ${FALLBACK_MODEL_ID}`);
+            engine = await webllm.CreateMLCEngine(FALLBACK_MODEL_ID, { initProgressCallback });
+          }
+        } catch (err) {
+          termLog("Error loading preferred model, trying fallback.");
+          engine = await webllm.CreateMLCEngine(FALLBACK_MODEL_ID, { initProgressCallback: (r) => setStatus(`Fallback Loading: ${Math.round(r.progress * 100)}%`, "bg-yellow-500") });
+        }
+        termLog("Local Model Loaded.");
+        setStatus("Ready", "bg-green-500");
+        btnGen.disabled = false;
+      } catch (e) {
+        termLog(`Boot error: ${e.message}`);
+        setStatus("Boot Error", "bg-red-500");
+      }
+    }
 
-    async function initEngine() {
-      if (isLoading) return;
-      isLoading = true;
-      btnGenerate.disabled = true;
-      setStatus("loading", "Loading model…");
-      progressWrap.classList.add("visible");
-      btnLabel.textContent = "Loading model…";
+    boot();
+
+    btnGen.addEventListener("click", async () => {
+      const intent = promptEl.value.trim();
+      if (!intent) return;
+      btnGen.disabled = true;
+      btnGen.textContent = "Architecting...";
+      termLog("Calling Cloud Architect...");
 
       try {
-        engine = await webllm.CreateMLCEngine(MODEL_ID, {
-          initProgressCallback: (report) => {
-            const pct = Math.round((report.progress ?? 0) * 100);
-            progressBar.style.width = pct + "%";
-            progressLabel.textContent = report.text || `Loading… ${pct}%`;
+        const res = await fetch("/api/architect", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: intent })
+        });
+        if (!res.ok) throw new Error("Architect failed");
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let toonOutput = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n");
+          for (let line of lines) {
+            if (line.startsWith("data: ") && !line.includes("[DONE]")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                toonOutput += data.text;
+              } catch (e) { }
+            }
+          }
+        }
+        termLog("Received TOON Blueprint from Architect:\n" + toonOutput);
+
+        // Parse TOON output
+        let deps = [];
+        let files = [];
+        let inFiles = false;
+        for (let line of toonOutput.split('\n')) {
+          line = line.trim();
+          if (!line) continue;
+          if (line.startsWith('deps:')) {
+            deps = line.slice(5).split(',').map(d => d.trim().replace(/^\[|\]$/g, '').trim());
+          } else if (line.startsWith('files{')) {
+            inFiles = true;
+          } else if (inFiles) {
+            const parts = line.split(',');
+            if (parts.length >= 3) {
+              const path = parts[0].trim();
+              const type = parts[1].trim();
+              let logic = parts.slice(2).join(',').trim();
+              logic = logic.replace(/^"|"$/g, '');
+              files.push({ path, type, logic });
+            }
+          }
+        }
+
+        termLog("Writing Scaffold to WebContainer...");
+        const baseDevDeps = {
+          "@types/react": "^18.2.15",
+          "@types/react-dom": "^18.2.7",
+          "@vitejs/plugin-react": "^4.0.3",
+          "typescript": "^5.0.2",
+          "vite": "^4.4.5",
+          "autoprefixer": "^10.4.14",
+          "postcss": "^8.4.27",
+          "tailwindcss": "^3.3.3"
+        };
+        const customDeps = {};
+        for (let dep of deps) {
+          if (dep.startsWith('"') || dep.replace(/[^a-zA-Z0-9-@/]/g, '') !== dep) {
+            dep = dep.replace(/[^a-zA-Z0-9-@/]/g, '');
+          }
+          if (dep) customDeps[dep] = "*";
+        }
+
+        const packageJson = {
+          name: "toon-app",
+          type: "module",
+          scripts: { dev: "vite --host 0.0.0.0" },
+          dependencies: {
+            "react": "^18.2.0",
+            "react-dom": "^18.2.0",
+            "lucide-react": "^0.263.1",
+            ...customDeps
           },
-        });
-        progressWrap.classList.remove("visible");
-        setStatus("ready", "Local model ready");
-        btnLabel.textContent = "Generate page";
-        btnGenerate.disabled = false;
-      } catch (err) {
-        progressWrap.classList.remove("visible");
-        setStatus("error", "Failed to load model");
-        btnLabel.textContent = "Retry loading model";
-        btnGenerate.disabled = false;
-        showToast("Error loading model: " + err.message, 8000);
-        console.error(err);
-      } finally {
-        isLoading = false;
-      }
-    }
+          devDependencies: baseDevDeps
+        };
 
-    async function generateLocal() {
-      const prompt = promptArea.value.trim();
-      if (!prompt) { showToast("Please enter a page description first."); return; }
-      if (!engine) { showToast("Model is not loaded yet."); return; }
-      if (isGenerating) return;
-
-      isGenerating = true;
-      btnGenerate.disabled = true;
-      spinner.classList.add("active");
-      btnLabel.textContent = "Generating…";
-      setStatus("loading", "Generating…");
-      _resetOutput();
-
-      try {
-        const stream = await engine.chat.completions.create({
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: prompt },
-          ],
-          temperature: 0.7,
-          max_tokens: 4096,
-          stream: true,
-        });
-        for await (const chunk of stream) {
-          const delta = chunk.choices[0]?.delta?.content ?? "";
-          latestCode += delta;
-          codeOutput.textContent = latestCode;
-          codeOutput.scrollTop = codeOutput.scrollHeight;
-          _appendThinking(delta);
-        }
-        _finalise();
-      } catch (err) {
-        _onError(err);
-      } finally {
-        _resetButtons();
-      }
-    }
-
-    // ── Cloud fallback (server-side key via /api/generate) ────────────────────────
-    async function generateCloud() {
-      const prompt = promptArea.value.trim();
-      if (!prompt) { showToast("Please enter a page description first."); return; }
-      if (isGenerating) return;
-
-      isGenerating = true;
-      btnGenerate.disabled = true;
-      spinner.classList.add("active");
-      btnLabel.textContent = "Generating…";
-      setStatus("loading", "Generating…");
-      _resetOutput();
-
-      try {
-        const resp = await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt }),
-        });
-        if (!resp.ok) {
-          const errBody = await resp.json().catch(() => ({}));
-          const msg = errBody.error || `Server error ${resp.status}`;
-          if (resp.status === 429) throw new Error("Rate limit reached. Please wait a moment and try again.");
-          throw new Error(msg);
-        }
-        const reader = resp.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          const lines = buf.split("\n");
-          buf = lines.pop();
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            const data = line.slice(6).trim();
-            if (data === "[DONE]") continue;
-            try {
-              const json = JSON.parse(data);
-              const delta = json.choices?.[0]?.delta?.content ?? "";
-              latestCode += delta;
-              codeOutput.textContent = latestCode;
-              codeOutput.scrollTop = codeOutput.scrollHeight;
-              _appendThinking(delta);
-            } catch { /* skip malformed SSE */ }
-          }
-        }
-        _finalise();
-      } catch (err) {
-        _onError(err);
-      } finally {
-        _resetButtons();
-      }
-    }
-
-    // ── Shared output helpers ─────────────────────────────────────────────────────
-    function _resetOutput() {
-      latestCode = "";
-      codeEmpty.style.display = "none";
-      codeOutput.style.display = "block";
-      codeOutput.textContent = "";
-      codeOutput.classList.add("streaming");
-      previewEmpty.style.display = "flex";
-      previewFrame.style.display = "none";
-      // Show thinking bubble
-      const sec = document.getElementById("thinking-section");
-      const txt = document.getElementById("thinking-text");
-      const dot = document.getElementById("thinking-dot");
-      const lbl = document.getElementById("thinking-label");
-      const ftr = document.getElementById("thinking-footer");
-      txt.textContent = "";
-      lbl.textContent = "Generating…";
-      dot.classList.add("pulse");
-      ftr.classList.remove("visible");
-      sec.classList.add("visible");
-    }
-    function _finalise() {
-      codeOutput.classList.remove("streaming");
-      const html = extractHTML(latestCode);
-      latestCode = html;
-      codeOutput.textContent = html;
-      renderPreview(html);
-      setStatus("ready", cloudMode ? "Cloud API ready" : "Local model ready");
-      // Mark thinking bubble done
-      const dot = document.getElementById("thinking-dot");
-      const lbl = document.getElementById("thinking-label");
-      const ftr = document.getElementById("thinking-footer");
-      dot.classList.remove("pulse");
-      dot.style.background = "var(--green)";
-      lbl.textContent = "Done";
-      ftr.textContent = `✓ ${latestCode.length.toLocaleString()} chars generated`;
-      ftr.classList.add("visible");
-    }
-    function _onError(err) {
-      showToast("Generation error: " + err.message, 6000);
-      console.error(err);
-      codeOutput.classList.remove("streaming");
-      setStatus("error", "Error");
-      setTimeout(() => setStatus("ready", cloudMode ? "Cloud API ready" : "Local model ready"), 3000);
-      // Mark thinking bubble errored
-      const dot = document.getElementById("thinking-dot");
-      const lbl = document.getElementById("thinking-label");
-      dot.classList.remove("pulse");
-      dot.style.background = "var(--red)";
-      lbl.textContent = "Error";
-    }
-    function _appendThinking(delta) {
-      if (!delta) return;
-      const txt = document.getElementById("thinking-text");
-      txt.textContent += delta;
-      txt.scrollTop = txt.scrollHeight;
-    }
-    function _resetButtons() {
-      isGenerating = false;
-      btnGenerate.disabled = false;
-      spinner.classList.remove("active");
-      btnLabel.textContent = "Generate page";
-    }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────────
-    function extractHTML(raw) {
-      const fenced = raw.match(/```(?:html)?\s*([\s\S]*?)```/i);
-      if (fenced) return fenced[1].trim();
-      const doctype = raw.match(/(<![\s\S]*<\/html>)/i);
-      if (doctype) return doctype[1].trim();
-      return raw.trim();
-    }
-    function renderPreview(html) {
-      previewEmpty.style.display = "none";
-      previewFrame.style.display = "block";
-      previewFrame.srcdoc = html;
-    }
-    function refreshPreview() {
-      if (latestCode) renderPreview(latestCode);
-    }
-
-    // ── Copy / Download ───────────────────────────────────────────────────────────
-    window.copyCode = async function () {
-      if (!latestCode) return;
-      try {
-        await navigator.clipboard.writeText(latestCode);
-        const btn = document.getElementById("btn-copy");
-        btn.textContent = "Copied!";
-        setTimeout(() => btn.textContent = "Copy", 1500);
-      } catch { showToast("Copy failed — please select and copy manually."); }
-    };
-    window.downloadCode = function () {
-      if (!latestCode) return;
-      const blob = new Blob([latestCode], { type: "text/html" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "generated-page.html";
-      a.click();
-      URL.revokeObjectURL(a.href);
-    };
-    window.refreshPreview = refreshPreview;
-
-    // ── Tab switching ─────────────────────────────────────────────────────────────
-    window.switchTab = function (tab) {
-      const tabs = ['preview', 'html'];
-      tabs.forEach(t => {
-        document.getElementById('tab-panel-' + t).classList.toggle('active', t === tab);
-        document.getElementById('tab-btn-' + t).classList.toggle('active', t === tab);
-        const actions = document.getElementById('tab-actions-' + t);
-        if (actions) actions.style.display = t === tab ? 'flex' : 'none';
-      });
-    };
-    // Default: show preview tab
-    switchTab('preview');
-
-    // ── Example buttons ───────────────────────────────────────────────────────────
-    document.querySelectorAll(".example-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        promptArea.value = btn.dataset.prompt;
-        promptArea.focus();
-      });
-    });
-
-    // ── Hybrid generate (Gemini reasons → local Qwen codes) ──────────────────────
-    async function hybridGenerate() {
-      const prompt = promptArea.value.trim();
-      if (!prompt) { showToast("Please enter a page description first."); return; }
-      if (isGenerating) return;
-
-      isGenerating = true;
-      btnGenerate.disabled = true;
-      spinner.classList.add("active");
-      btnLabel.textContent = "Thinking…";
-      setBadgeHybrid("thinking");
-      setStatus("loading", "Reasoning…");
-      _resetOutput();
-
-      let planText = "";
-
-      // ── Step 1: Gemini Flash Thinking ────────────────────────────────────────
-      try {
-        const resp = await fetch("/api/reason", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt }),
-        });
-        if (!resp.ok) {
-          const e = await resp.json().catch(() => ({}));
-          throw new Error(e.error || `Reasoning error ${resp.status}`);
-        }
-        const reader = resp.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          const lines = buf.split("\n");
-          buf = lines.pop();
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            const raw = line.slice(6).trim();
-            if (raw === "[DONE]") continue;
-            try {
-              const json = JSON.parse(raw);
-              if (json.t === "think") _appendThinking(json.text);
-              else if (json.t === "plan") planText += json.text;
-            } catch { /* skip */ }
-          }
-        }
-      } catch (err) {
-        _onError(err);
-        _resetButtons();
-        setBadgeLocal();
-        return;
-      }
-
-      // ── Step 2: Wait for local engine, then generate HTML ────────────────────
-      setBadgeHybrid("coding");
-      btnLabel.textContent = "Coding…";
-      setStatus("loading", "Generating HTML…");
-
-      // If model is still loading, wait (poll every 500 ms)
-      while (isLoading) {
-        await new Promise(r => setTimeout(r, 500));
-      }
-      if (!engine) {
-        _onError(new Error("Local model not available."));
-        _resetButtons();
-        setBadgeHybrid();
-        return;
-      }
-
-      // Build an enhanced prompt: Gemini's plan + original request
-      const enhancedPrompt = planText.trim()
-        ? `Use the following design specification:\n${planText.trim()}\n\nOriginal request: ${prompt}`
-        : prompt;
-
-      try {
-        const stream = await engine.chat.completions.create({
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: enhancedPrompt },
-          ],
-          temperature: 0.6,
-          max_tokens: 8192,
-          stream: true,
-        });
-        for await (const chunk of stream) {
-          const delta = chunk.choices[0]?.delta?.content ?? "";
-          latestCode += delta;
-          codeOutput.textContent = latestCode;
-          codeOutput.scrollTop = codeOutput.scrollHeight;
-        }
-        _finalise();
-        setBadgeHybrid();
-      } catch (err) {
-        _onError(err);
-        setBadgeHybrid();
-      } finally {
-        _resetButtons();
-      }
-    }
-
-    // ── Generate button & Ctrl+Enter ──────────────────────────────────────────────
-    btnGenerate.addEventListener("click", async () => {
-      if (isLoading && !cloudMode) return; // still loading local model — wait
-      if (cloudMode) { generateCloud(); return; }
-      hybridGenerate();
-    });
-    promptArea.addEventListener("keydown", e => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-        if (cloudMode) generateCloud();
-        else hybridGenerate();
-      }
-    });
-
-    // ── Boot ──────────────────────────────────────────────────────────────────────
-    if (cloudMode) {
-      // WebGPU not available — activate cloud mode automatically
-      setBadgeCloud();
-      setStatus("ready", "Cloud API ready");
-      btnLabel.textContent = "Generate page";
-      btnGenerate.disabled = false;
-
-      // Wire up the "Continue" button on the compat screen
-      const btnContinue = document.getElementById("btn-compat-continue");
-      if (btnContinue) {
-        btnContinue.addEventListener("click", () => {
-          const screen = document.getElementById("compat-screen");
-          if (screen) screen.classList.add("hidden");
-        });
-      }
-    } else {
-      // WebGPU available — start loading the local model immediately
-      setBadgeHybrid();
-      initEngine(); // auto-starts; button re-enables when ready
-    }
-  </script>
+        const viteConfig = `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({ plugins: [react()] });`;
+        const twConfig = `/** @type {import('tailwindcss').Config} */\nexport default { content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"], theme: { extend: {} }, plugins: [] }`;
+        const postcssConfig = `export default { plugins: { tailwindcss: {}, autoprefixer: {}, }, }`;
+        const indexHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Vite App</title></head><body><div id="root"></div><script type="module" src="/src/main.tsx"></script>
 </body>
 
-</html>
+</html>`;
+const mainTsx = `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from
+'./App.tsx';\nimport './index.css';\n\nReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode>
+  <App />
+</React.StrictMode>);`;
+const indexCss = `@tailwind base;\n@tailwind components;\n@tailwind utilities;\n`;
+
+await webcontainerInstance.mount({
+'package.json': { file: { contents: JSON.stringify(packageJson, null, 2) } },
+'vite.config.ts': { file: { contents: viteConfig } },
+'tailwind.config.js': { file: { contents: twConfig } },
+'postcss.config.js': { file: { contents: postcssConfig } },
+'index.html': { file: { contents: indexHtml } },
+'src': { directory: {
+'main.tsx': { file: { contents: mainTsx } },
+'index.css': { file: { contents: indexCss } }
+} }
+});
+
+setStatus("Installing packages...", "bg-blue-500");
+const installProcess = await webcontainerInstance.spawn('npm', ['install']);
+installProcess.output.pipeTo(new WritableStream({ write(data) { terminal.write(data); } }));
+await installProcess.exit;
+
+explorerEl.innerHTML = "";
+fileMap.clear();
+
+for (const file of files) {
+if (!file.path) continue;
+termLog(`Drafting ${file.path} with Local WebLLM...`);
+setStatus(`Drafting: ${file.path}`, "bg-yellow-500");
+const prompt = `You are a Senior Frontend Engineer. You are working in a local WebContainer environment.
+Write the FULL code for ${file.path} based on this logic: ${file.logic}.
+Output the FULL code inside a Markdown code block like \`\`\`tsx ... \`\`\`. Do not include any prose before or after
+the code block.`;
+
+const stream = await engine.chat.completions.create({
+messages: [ { role: "system", content: "You are an expert react/tailwind developer." }, { role: "user", content: prompt
+} ],
+temperature: 0.2,
+max_tokens: 4096,
+});
+
+let out = "";
+for await(const chunk of stream) {
+out += chunk.choices[0]?.delta?.content || "";
+}
+
+const codeMatch = out.match(/```(?:tsx|ts|jsx|js)?\n([\s\S]*?)\n```/);
+const code = codeMatch ? codeMatch[1].trim() : out.trim();
+
+const pathParts = file.path.split('/');
+const filename = pathParts.pop();
+let currentPath = '';
+for (const p of pathParts) {
+currentPath += (currentPath ? '/' : '') + p;
+try { await webcontainerInstance.fs.mkdir(currentPath); } catch(e){}
+}
+
+await webcontainerInstance.fs.writeFile(file.path, code);
+fileMap.set(file.path, code);
+termLog(`Wrote ${file.path}.`);
+
+const fileItem = document.createElement("div");
+fileItem.className = "file-item";
+fileItem.textContent = file.path;
+explorerEl.appendChild(fileItem);
+}
+
+setStatus("Starting Vite...", "bg-blue-500");
+const devProcess = await webcontainerInstance.spawn('npm', ['run', 'dev']);
+devProcess.output.pipeTo(new WritableStream({ write(data) { terminal.write(data); } }));
+
+btnGen.textContent = "Blueprint & Build";
+btnGen.disabled = false;
+btnUpdate.disabled = false;
+setStatus("Live", "bg-green-500");
+
+} catch (e) {
+termLog("Error: " + e.message);
+btnGen.textContent = "Blueprint & Build";
+btnGen.disabled = false;
+setStatus("Error", "bg-red-500");
+}
+});
+
+btnUpdate.addEventListener("click", async () => {
+const updateRequest = updatePromptEl.value.trim();
+if (!updateRequest) return;
+btnUpdate.disabled = true;
+btnUpdate.textContent = "Updating...";
+setStatus("Surgical Update...", "bg-yellow-500");
+termLog("Local Model drafting SEARCH/REPLACE Aider Block...");
+
+let projectContext = "";
+for (const [p, c] of fileMap.entries()) {
+projectContext += `\n// file: ${p}\n\`\`\`tsx\n${c}\n\`\`\`\n`;
+}
+
+const prompt = `You are a Senior Frontend Engineer. You are working in a local WebContainer environment.
+CURRENT PROJECT FILES:
+${projectContext}
+
+USER REQUEST: ${updateRequest}
+
+OUTPUT RULES:
+Output ONLY the SEARCH/REPLACE block for the file that needs changing.
+Do not include any prose before or after.
+Format exactly:
+File: targetFile.tsx
+<<<< SEARCH [exact old code to replace including whitespace]====[exact new code]>>>>`;
+
+  try {
+  const stream = await engine.chat.completions.create({
+  messages: [{ role: "user", content: prompt }],
+  temperature: 0.1,
+  max_tokens: 4096,
+  });
+
+  let out = "";
+  for await(const chunk of stream) {
+  out += chunk.choices[0]?.delta?.content || "";
+  }
+
+  termLog("Received Aider Block:\n" + out);
+
+  const fileMatch = out.match(/File:\s*([^\n]+)/);
+  if (!fileMatch) throw new Error("Could not parse target file from response.");
+  const targetFile = fileMatch[1].trim();
+
+  const searchMatch = out.match(/<<<< SEARCH\n([\s\S]*?)\n====/); const replaceMatch=out.match(/====\n([\s\S]*?)\n>
+    >>>/);
+
+    if (!searchMatch || !replaceMatch) throw new Error("Could not parse SEARCH/REPLACE block.");
+
+    const searchStr = searchMatch[1];
+    const replaceStr = replaceMatch[1];
+
+    if (!fileMap.has(targetFile)) {
+    termLog(`Target file ${targetFile} not found in map. We'll read it from fs.`);
+    }
+
+    let fileContent;
+    try {
+    const uint8Array = await webcontainerInstance.fs.readFile(targetFile);
+    fileContent = new TextDecoder().decode(uint8Array);
+    } catch (e) { throw new Error(`Could not read ${targetFile} from FS: ` + e.message); }
+
+    if (fileContent.includes(searchStr)) {
+    const newContent = fileContent.replace(searchStr, replaceStr);
+    await webcontainerInstance.fs.writeFile(targetFile, newContent);
+    fileMap.set(targetFile, newContent);
+    termLog(`Updated ${targetFile} successfully.`);
+    } else {
+    throw new Error("SEARCH block not found in the original file content.");
+    }
+
+    setStatus("Live", "bg-green-500");
+    } catch (e) {
+    termLog(`Update Error: ${e.message}`);
+    setStatus("Error", "bg-red-500");
+    } finally {
+    btnUpdate.disabled = false;
+    btnUpdate.textContent = "Update (Aider)";
+    updatePromptEl.value = "";
+    }
+    });
+    </script>
+    </body>
+
+    </html>
