@@ -1,6 +1,6 @@
 export const config = { runtime: "edge" };
 
-const GEMINI_MODEL = "gemini-2.5-pro";
+const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse`;
 
 const REASON_PROMPT = `You are a senior design engineer at a world-class digital agency. Given a page description, think deeply and output a concise technical design specification (NOT code) that a developer will use to build the page.
@@ -91,7 +91,7 @@ export default async function handler(req) {
             ],
             generationConfig: {
                 temperature: 0.7,
-                maxOutputTokens: 8192
+                maxOutputTokens: 3000
             },
         }),
     });
