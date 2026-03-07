@@ -6,6 +6,7 @@
   <title>TOON WebLLM Architect</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
   <style>
     body {
@@ -80,11 +81,33 @@
           disabled>Update (Aider)</button>
       </header>
 
-      <div class="flex-1 relative bg-white">
-        <iframe id="preview-iframe" class="w-full h-full border-0 absolute inset-0 hidden"
-          sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
-        <div id="preview-overlay" class="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-950">
-          Preview will load here once Vite starts...
+      <div class="flex-1 relative bg-white flex flex-row min-h-0">
+        <!-- New Code Viewer Pane -->
+        <div class="w-1/2 border-r border-gray-800 bg-gray-900 flex flex-col min-w-0">
+          <div
+            class="h-8 border-b border-gray-800 bg-gray-800/50 flex items-center px-3 text-xs text-gray-400 font-mono flex-shrink-0 justify-between">
+            <span id="code-viewer-title">Code Stream</span>
+          </div>
+          <div class="flex-1 overflow-auto p-4">
+            <pre id="code-viewer"
+              class="text-xs font-mono text-gray-300 m-0 whitespace-pre-wrap break-words leading-relaxed"></pre>
+          </div>
+        </div>
+
+        <!-- Existing Preview Pane -->
+        <div class="w-1/2 relative bg-white flex flex-col min-w-0">
+          <div
+            class="h-8 border-b border-gray-200 bg-gray-50 flex items-center px-3 text-xs text-gray-500 font-mono flex-shrink-0">
+            Live Preview (Vite)
+          </div>
+          <div class="flex-1 relative">
+            <iframe id="preview-iframe" class="w-full h-full border-0 absolute inset-0 hidden"
+              sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
+            <div id="preview-overlay"
+              class="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-950 text-sm">
+              Waiting for Vite to start...
+            </div>
+          </div>
         </div>
       </div>
 
@@ -104,7 +127,11 @@
     import { WebContainer } from "https://esm.sh/@webcontainer/api";
 
     const terminal = new window.Terminal({ convertEol: true, cursorBlink: true, fontSize: 13, theme: { background: '#0f1117' } });
+    const fitAddon = new window.FitAddon.FitAddon();
+    terminal.loadAddon(fitAddon);
     terminal.open(document.getElementById('terminal-container'));
+    fitAddon.fit();
+    window.addEventListener('resize', () => fitAddon.fit());
 
     let webcontainerInstance;
     let engine;
@@ -119,6 +146,8 @@
     const explorerEl = document.getElementById("file-explorer");
     const iframe = document.getElementById("preview-iframe");
     const previewOverlay = document.getElementById("preview-overlay");
+    const codeViewer = document.getElementById("code-viewer");
+    const codeViewerTitle = document.getElementById("code-viewer-title");
 
     function setStatus(msg, colorClass) {
       statusText.textContent = msg;
@@ -143,7 +172,7 @@
         });
 
         termLog("Loading Local Weights (WebLLM)...");
-        const PREFERRED_MODEL_ID = "Qwen3-Coder-Next-7B";
+        const PREFERRED_MODEL_ID = "Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC";
         const FALLBACK_MODEL_ID = "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC";
         try {
           // Check if preferred model is supported in standard webllm
@@ -245,196 +274,302 @@
           if (dep.startsWith('"') || dep.replace(/[^a-zA-Z0-9-@/]/g, '') !== dep) {
             dep = dep.replace(/[^a-zA-Z0-9-@/]/g, '');
           }
-          if (dep) customDeps[dep] = "*";
+          if (dep && dep !== 'react' && dep !== 'react-dom' && !baseDevDeps[dep] && dep !== 'lucide-react') {
+            customDeps[dep] = "*";
+          }
         }
 
-        const packageJson = {
-          name: "toon-app",
-          type: "module",
-          scripts: { dev: "vite --host 0.0.0.0" },
-          dependencies: {
-            "react": "^18.2.0",
-            "react-dom": "^18.2.0",
-            "lucide-react": "^0.263.1",
-            ...customDeps
-          },
-          devDependencies: baseDevDeps
-        };
+        const resTree = await fetch('/public/scaffold-tree.json');
+        const scaffoldTree = await resTree.json();
 
-        const viteConfig = `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({ plugins: [react()] });`;
-        const twConfig = `/** @type {import('tailwindcss').Config} */\nexport default { content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"], theme: { extend: {} }, plugins: [] }`;
-        const postcssConfig = `export default { plugins: { tailwindcss: {}, autoprefixer: {}, }, }`;
-        const indexHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Vite App</title></head><body><div id="root"></div><script type="module" src="/src/main.tsx"></script>
-</body>
+        // Inject dynamic dependencies from Architect into the scaffold package.json
+        const pkgJsonFile = scaffoldTree['package.json'].file.contents;
+        let packageJson = JSON.parse(pkgJsonFile);
+        packageJson.dependencies = { ...packageJson.dependencies, ...customDeps };
+        scaffoldTree['package.json'].file.contents = JSON.stringify(packageJson, null, 2);
 
-</html>`;
-const mainTsx = `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from
-'./App.tsx';\nimport './index.css';\n\nReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode>
-  <App />
-</React.StrictMode>);`;
-const indexCss = `@tailwind base;\n@tailwind components;\n@tailwind utilities;\n`;
+        await webcontainerInstance.mount(scaffoldTree);
 
-await webcontainerInstance.mount({
-'package.json': { file: { contents: JSON.stringify(packageJson, null, 2) } },
-'vite.config.ts': { file: { contents: viteConfig } },
-'tailwind.config.js': { file: { contents: twConfig } },
-'postcss.config.js': { file: { contents: postcssConfig } },
-'index.html': { file: { contents: indexHtml } },
-'src': { directory: {
-'main.tsx': { file: { contents: mainTsx } },
-'index.css': { file: { contents: indexCss } }
-} }
-});
+        setStatus("Installing packages...", "bg-blue-500");
+        const installProcess = await webcontainerInstance.spawn('npm', ['install']);
+        installProcess.output.pipeTo(new WritableStream({ write(data) { terminal.write(data); } }));
+        await installProcess.exit;
 
-setStatus("Installing packages...", "bg-blue-500");
-const installProcess = await webcontainerInstance.spawn('npm', ['install']);
-installProcess.output.pipeTo(new WritableStream({ write(data) { terminal.write(data); } }));
-await installProcess.exit;
+        explorerEl.innerHTML = "";
+        fileMap.clear();
 
-explorerEl.innerHTML = "";
-fileMap.clear();
+        // ----------------------------------------------------
+        // START VITE EARLY
+        // ----------------------------------------------------
+        setStatus("Starting Vite...", "bg-blue-500");
+        const devProcess = await webcontainerInstance.spawn('npm', ['run', 'dev']);
 
-for (const file of files) {
-if (!file.path) continue;
-termLog(`Drafting ${file.path} with Local WebLLM...`);
-setStatus(`Drafting: ${file.path}`, "bg-yellow-500");
-const prompt = `You are a Senior Frontend Engineer. You are working in a local WebContainer environment.
+        let errorBuffer = "";
+        let isDebugging = false;
+        let debounceTimer = null;
+
+        devProcess.output.pipeTo(new WritableStream({
+          write(data) {
+            terminal.write(data);
+            errorBuffer += data;
+
+            if (errorBuffer.length > 5000) {
+              errorBuffer = errorBuffer.slice(-2000);
+            }
+
+            if ((data.includes("[ERROR]") || data.includes("Internal server error:")) && !isDebugging) {
+              if (debounceTimer) clearTimeout(debounceTimer);
+              debounceTimer = setTimeout(async () => {
+                isDebugging = true;
+                const errorSnippet = errorBuffer.slice(-2000);
+                await applyLLMUpdate(errorSnippet, true);
+                isDebugging = false;
+                errorBuffer = "";
+              }, 1000);
+            }
+          }
+        }));
+
+        // --- NEW PLANNING STEP ---
+        termLog("Drafting System Implementation Plan...");
+        setStatus("Drafting System Plan...", "bg-yellow-500");
+
+        const planPrompt = `You are a Senior Software Architect. The user wants to build an application based on this intent: "${intent}".
+The Cloud Architect has provided the following TOON blueprint:
+${toonOutput}
+
+Pre-existing UI components are available at src/components/ui/ :
+- Button (variant="default|destructive|outline|secondary|ghost|link")
+- Input
+- Card, CardHeader, CardTitle, CardContent
+You should instruct the frontend engineer to use these whenever possible instead of raw Tailwind HTML for these elements.
+
+Your task is to write a detailed system architecture and implementation plan before we generate the files.
+This plan must define:
+1. The global state management strategy.
+2. The core component hierarchy and data flow.
+3. Specific coding standards or patterns to use for this project (e.g. usage of the pre-existing UI components).
+
+Output ONLY a Markdown document containing this detailed plan. Do not include any conversational filler.`;
+
+        const planStream = await engine.chat.completions.create({
+          messages: [{ role: "system", content: "You are an expert technical planner." }, { role: "user", content: planPrompt }],
+          temperature: 0.2,
+          max_tokens: 4096,
+          stream: true,
+        });
+
+        let systemPlan = "";
+        for await (const chunk of planStream) {
+          systemPlan += chunk.choices[0]?.delta?.content || "";
+        }
+
+        termLog("System Plan Drafted:\n" + systemPlan);
+        await webcontainerInstance.fs.writeFile('system_plan.md', systemPlan);
+        fileMap.set('system_plan.md', systemPlan);
+
+        const planFileItem = document.createElement("div");
+        planFileItem.className = "file-item";
+        planFileItem.textContent = "system_plan.md";
+        explorerEl.appendChild(planFileItem);
+        // --- END PLANNING STEP ---
+
+        for (const file of files) {
+          if (!file.path) continue;
+          termLog(`Drafting ${file.path} with Local WebLLM...`);
+          setStatus(`Drafting: ${file.path}`, "bg-yellow-500");
+          codeViewerTitle.textContent = `Streaming: ${file.path}`;
+          codeViewer.textContent = ""; // Clear active code pane
+
+          const prompt = `You are a Senior Frontend Engineer. You are working in a local WebContainer environment.
+Here is the system architecture and implementation plan for the project:
+<system_plan>
+${systemPlan}
+</system_plan>
+
+Pre-existing UI components available to import:
+- import { Button } from '../components/ui/button' (Adjust relative path as needed)
+- import { Input } from '../components/ui/input'
+- import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
+
 Write the FULL code for ${file.path} based on this logic: ${file.logic}.
+Follow the architecture outlined in the system plan. Use the pre-existing UI components to save time and tokens.
+CRITICAL: The project uses "type": "module". You MUST use ES module syntax (export/import) and NEVER use CommonJS.
 Output the FULL code inside a Markdown code block like \`\`\`tsx ... \`\`\`. Do not include any prose before or after
 the code block.`;
 
-const stream = await engine.chat.completions.create({
-messages: [ { role: "system", content: "You are an expert react/tailwind developer." }, { role: "user", content: prompt
-} ],
-temperature: 0.2,
-max_tokens: 4096,
-});
+          const stream = await engine.chat.completions.create({
+            messages: [{ role: "system", content: "You are an expert react/tailwind developer." }, {
+              role: "user", content: prompt
+            }],
+            temperature: 0.2,
+            max_tokens: 4096,
+            stream: true,
+          });
 
-let out = "";
-for await(const chunk of stream) {
-out += chunk.choices[0]?.delta?.content || "";
-}
+          // Create the file immediately so Vite knows it exists and can throw parse errors
+          // instead of 404s, which sets up HMR cleanly.
+          const pathParts = file.path.split('/');
+          const filename = pathParts.pop();
+          let currentPath = '';
+          for (const p of pathParts) {
+            currentPath += (currentPath ? '/' : '') + p;
+            try { await webcontainerInstance.fs.mkdir(currentPath); } catch (e) { }
+          }
+          await webcontainerInstance.fs.writeFile(file.path, "");
 
-const codeMatch = out.match(/```(?:tsx|ts|jsx|js)?\n([\s\S]*?)\n```/);
-const code = codeMatch ? codeMatch[1].trim() : out.trim();
+          let out = "";
+          let lastWriteTime = Date.now();
+          const WRITE_THROTTLE_MS = 2500; // Throttled progressive rendering
 
-const pathParts = file.path.split('/');
-const filename = pathParts.pop();
-let currentPath = '';
-for (const p of pathParts) {
-currentPath += (currentPath ? '/' : '') + p;
-try { await webcontainerInstance.fs.mkdir(currentPath); } catch(e){}
-}
+          for await (const chunk of stream) {
+            const delta = chunk.choices[0]?.delta?.content || "";
+            out += delta;
 
-await webcontainerInstance.fs.writeFile(file.path, code);
-fileMap.set(file.path, code);
-termLog(`Wrote ${file.path}.`);
+            // 1. Update Stream UI Instantly
+            codeViewer.textContent = out;
 
-const fileItem = document.createElement("div");
-fileItem.className = "file-item";
-fileItem.textContent = file.path;
-explorerEl.appendChild(fileItem);
-}
+            // 2. Throttle Writes to WebContainer (Progressive UI Build)
+            if (Date.now() - lastWriteTime > WRITE_THROTTLE_MS) {
+              // Extract code block if it has started, otherwise use raw output
+              const partialMatch = out.match(/```(?:tsx|ts|jsx|js|css|html)?\n([\s\S]*)/);
+              const partialCode = partialMatch ? partialMatch[1] : out;
 
-setStatus("Starting Vite...", "bg-blue-500");
-const devProcess = await webcontainerInstance.spawn('npm', ['run', 'dev']);
-devProcess.output.pipeTo(new WritableStream({ write(data) { terminal.write(data); } }));
+              // Very basic auto-closer to prevent Vite from completely dying on truncated ASTs.
+              // It just appends closing brackets/tags blindly to the end of the file.
+              // While often syntactically wrong, Vite's error overlay is better than a hard crash.
+              const unclosedDivs = (partialCode.match(/<div[^>]*>/g) || []).length - (partialCode.match(/<\/div>/g) || []).length;
+              let autoClosed = partialCode;
+              for (let i = 0; i < unclosedDivs; i++) autoClosed += "\n</div>";
+              if (!autoClosed.trim().endsWith("}")) autoClosed += "\n}";
 
-btnGen.textContent = "Blueprint & Build";
-btnGen.disabled = false;
-btnUpdate.disabled = false;
-setStatus("Live", "bg-green-500");
+              await webcontainerInstance.fs.writeFile(file.path, autoClosed);
+              lastWriteTime = Date.now();
+            }
+          }
 
-} catch (e) {
-termLog("Error: " + e.message);
-btnGen.textContent = "Blueprint & Build";
-btnGen.disabled = false;
-setStatus("Error", "bg-red-500");
-}
-});
+          const codeMatch = out.match(/```(?:tsx|ts|jsx|js|css|html)?\n([\s\S]*?)\n```/);
+          const finalCode = codeMatch ? codeMatch[1].trim() : out.trim();
 
-btnUpdate.addEventListener("click", async () => {
-const updateRequest = updatePromptEl.value.trim();
-if (!updateRequest) return;
-btnUpdate.disabled = true;
-btnUpdate.textContent = "Updating...";
-setStatus("Surgical Update...", "bg-yellow-500");
-termLog("Local Model drafting SEARCH/REPLACE Aider Block...");
+          // Final write with full, correct syntax
+          await webcontainerInstance.fs.writeFile(file.path, finalCode);
+          fileMap.set(file.path, finalCode);
+          termLog(`Wrote ${file.path}.`);
 
-let projectContext = "";
-for (const [p, c] of fileMap.entries()) {
-projectContext += `\n// file: ${p}\n\`\`\`tsx\n${c}\n\`\`\`\n`;
-}
+          const fileItem = document.createElement("div");
+          fileItem.className = "file-item";
+          fileItem.textContent = file.path;
+          explorerEl.appendChild(fileItem);
+        }
 
-const prompt = `You are a Senior Frontend Engineer. You are working in a local WebContainer environment.
+        btnGen.textContent = "Blueprint & Build";
+        btnGen.disabled = false;
+        btnUpdate.disabled = false;
+        setStatus("Live", "bg-green-500");
+        codeViewerTitle.innerHTML = `<span class="text-green-400">Generation Complete</span>`;
+
+      } catch (e) {
+        termLog("Error: " + e.message);
+        btnGen.textContent = "Blueprint & Build";
+        btnGen.disabled = false;
+        setStatus("Error", "bg-red-500");
+      }
+    });
+
+    async function applyLLMUpdate(requestText, isError = false) {
+      setStatus(isError ? "Debugging Mode..." : "Surgical Update...", isError ? "bg-red-500" : "bg-yellow-500");
+      termLog(isError ? "Local Model drafting FIX..." : "Local Model drafting SEARCH/REPLACE Aider Block...");
+
+      let projectContext = "";
+      for (const [p, c] of fileMap.entries()) {
+        projectContext += `\n// file: ${p}\n\`\`\`tsx\n${c}\n\`\`\`\n`;
+      }
+
+      const promptContext = isError ? `THE SERVER THREW AN ERROR:\n${requestText}` : `USER REQUEST: ${requestText}`;
+
+      const prompt = `You are a Senior Frontend Engineer. You are working in a local WebContainer environment.
 CURRENT PROJECT FILES:
 ${projectContext}
 
-USER REQUEST: ${updateRequest}
+${promptContext}
 
 OUTPUT RULES:
 Output ONLY the SEARCH/REPLACE block for the file that needs changing.
 Do not include any prose before or after.
 Format exactly:
 File: targetFile.tsx
-<<<< SEARCH [exact old code to replace including whitespace]====[exact new code]>>>>`;
+<<<< SEARCH
+[exact old code to replace including whitespace]
+====
+[exact new code]
+>>>>`;
 
-  try {
-  const stream = await engine.chat.completions.create({
-  messages: [{ role: "user", content: prompt }],
-  temperature: 0.1,
-  max_tokens: 4096,
-  });
+      try {
+        const stream = await engine.chat.completions.create({
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.1,
+          max_tokens: 4096,
+          stream: true,
+        });
 
-  let out = "";
-  for await(const chunk of stream) {
-  out += chunk.choices[0]?.delta?.content || "";
-  }
+        let out = "";
+        for await (const chunk of stream) {
+          out += chunk.choices[0]?.delta?.content || "";
+        }
 
-  termLog("Received Aider Block:\n" + out);
+        termLog((isError ? "Received Fix Block:\n" : "Received Aider Block:\n") + out);
 
-  const fileMatch = out.match(/File:\s*([^\n]+)/);
-  if (!fileMatch) throw new Error("Could not parse target file from response.");
-  const targetFile = fileMatch[1].trim();
+        const fileMatch = out.match(/File:\s*([^\n]+)/);
+        if (!fileMatch) throw new Error("Could not parse target file from response.");
+        const targetFile = fileMatch[1].trim();
 
-  const searchMatch = out.match(/<<<< SEARCH\n([\s\S]*?)\n====/); const replaceMatch=out.match(/====\n([\s\S]*?)\n>
-    >>>/);
+        const searchMatch = out.match(/<<<< SEARCH\n([\s\S]*?)\n====/);
+        const replaceMatch = out.match(/====\n([\s\S]*?)\n>>>>/);
 
-    if (!searchMatch || !replaceMatch) throw new Error("Could not parse SEARCH/REPLACE block.");
+        if (!searchMatch || !replaceMatch) throw new Error("Could not parse SEARCH/REPLACE block.");
 
-    const searchStr = searchMatch[1];
-    const replaceStr = replaceMatch[1];
+        const searchStr = searchMatch[1];
+        const replaceStr = replaceMatch[1];
 
-    if (!fileMap.has(targetFile)) {
-    termLog(`Target file ${targetFile} not found in map. We'll read it from fs.`);
+        if (!fileMap.has(targetFile)) {
+          termLog(`Target file ${targetFile} not found in map. We'll read it from fs.`);
+        }
+
+        let fileContent;
+        try {
+          const uint8Array = await webcontainerInstance.fs.readFile(targetFile);
+          fileContent = new TextDecoder().decode(uint8Array);
+        } catch (e) { throw new Error(`Could not read ${targetFile} from FS: ` + e.message); }
+
+        if (fileContent.includes(searchStr)) {
+          const newContent = fileContent.replace(searchStr, replaceStr);
+          await webcontainerInstance.fs.writeFile(targetFile, newContent);
+          fileMap.set(targetFile, newContent);
+          termLog(`Updated ${targetFile} successfully.`);
+        } else {
+          throw new Error("SEARCH block not found in the original file content.");
+        }
+
+        setStatus("Live", "bg-green-500");
+      } catch (e) {
+        termLog(`Update Error: ${e.message}`);
+        setStatus("Error", "bg-red-500");
+      }
     }
 
-    let fileContent;
-    try {
-    const uint8Array = await webcontainerInstance.fs.readFile(targetFile);
-    fileContent = new TextDecoder().decode(uint8Array);
-    } catch (e) { throw new Error(`Could not read ${targetFile} from FS: ` + e.message); }
+    btnUpdate.addEventListener("click", async () => {
+      const updateRequest = updatePromptEl.value.trim();
+      if (!updateRequest) return;
+      btnUpdate.disabled = true;
+      btnUpdate.textContent = "Updating...";
 
-    if (fileContent.includes(searchStr)) {
-    const newContent = fileContent.replace(searchStr, replaceStr);
-    await webcontainerInstance.fs.writeFile(targetFile, newContent);
-    fileMap.set(targetFile, newContent);
-    termLog(`Updated ${targetFile} successfully.`);
-    } else {
-    throw new Error("SEARCH block not found in the original file content.");
-    }
+      await applyLLMUpdate(updateRequest, false);
 
-    setStatus("Live", "bg-green-500");
-    } catch (e) {
-    termLog(`Update Error: ${e.message}`);
-    setStatus("Error", "bg-red-500");
-    } finally {
-    btnUpdate.disabled = false;
-    btnUpdate.textContent = "Update (Aider)";
-    updatePromptEl.value = "";
-    }
+      btnUpdate.disabled = false;
+      btnUpdate.textContent = "Update (Aider)";
+      updatePromptEl.value = "";
     });
-    </script>
-    </body>
+  </script>
+</body>
 
-    </html>
+</html>
