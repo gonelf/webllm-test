@@ -301,7 +301,8 @@ setStatus(`Drafting: ${file.path}`, "bg-yellow-500");
 const prompt = `You are a Senior Frontend Engineer. You are working in a local WebContainer environment.
 Write the FULL code for ${file.path} based on this logic: ${file.logic}.
 Output the FULL code inside a Markdown code block like \`\`\`tsx ... \`\`\`. Do not include any prose before or after
-the code block.`;
+the code block.
+IMPORTANT: If this file involves a shopping list derived from recipe ingredients, only include the ingredient name and quantity (e.g. "1 cebola", "200g farinha"). Never include preparation methods (e.g. "suada em azeite", "picada", "cortada em cubos") as part of the shopping list item — those belong only in the recipe instructions.`;
 
 const stream = await engine.chat.completions.create({
 messages: [ { role: "system", content: "You are an expert react/tailwind developer." }, { role: "user", content: prompt
