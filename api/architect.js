@@ -8,6 +8,9 @@ CRITICAL RULES:
 Respond ONLY in TOON format. No prose, no conversational filler.
 Define the exact package.json dependencies and a list of all required file paths.
 For each file, provide a brief "Logic Summary" instead of the full code.
+DATA MODELLING RULES:
+If the app involves recipes or ingredients, each ingredient must be modelled as { quantity: string, name: string, preparation?: string }.
+Shopping lists must only use quantity + name fields, never preparation.
 Use the following TOON Schema:
 project: [name]
 deps: [comma-separated packages]
